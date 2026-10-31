@@ -93,6 +93,15 @@ function putInCache(fingerprint: string, data: any) {
 // GLOBAL REAL-TIME MULTILINGUAL TRANSLATION ENGINE & CACHE
 // ============================================================================
 const TRANSLATION_CACHE = new Map<string, string>();
+const MAX_TRANSLATION_CACHE_ENTRIES = 5000;
+
+function putInTranslationCache(key: string, val: string) {
+  if (TRANSLATION_CACHE.size >= MAX_TRANSLATION_CACHE_ENTRIES) {
+    const oldest = TRANSLATION_CACHE.keys().next().value;
+    if (oldest) TRANSLATION_CACHE.delete(oldest);
+  }
+  TRANSLATION_CACHE.set(key, val);
+}
 
 async function translateDynamicObject(obj: any, targetLang: string): Promise<any> {
   if (!obj || !targetLang) {
@@ -147,7 +156,7 @@ ${serialized}`;
 
     const resText = aiResponse.text || '{}';
     const parsed = JSON.parse(resText.replace(/```json\n?|```/g, '').trim());
-    TRANSLATION_CACHE.set(cacheKey, JSON.stringify(parsed));
+    putInTranslationCache(cacheKey, JSON.stringify(parsed));
     return parsed;
   } catch (err) {
     console.warn('Dynamic report translation fallback error:', err);
@@ -169,15 +178,47 @@ interface ProbeResult {
 
 const PROBE_CACHE = new Map<string, ProbeResult>();
 const PROBE_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const MAX_PROBE_CACHE_ENTRIES = 2000;
+
+function isPrivateOrDisallowedHost(host: string, ip?: string | null): boolean {
+  const clean = (host || '').toLowerCase().trim();
+  if (
+    clean === 'localhost' ||
+    clean === '127.0.0.1' ||
+    clean === '::1' ||
+    clean === '0.0.0.0' ||
+    clean.endsWith('.internal') ||
+    clean.endsWith('.local')
+  ) {
+    return true;
+  }
+  if (ip) {
+    // IPv4 private/loopback/link-local/cloud-metadata
+    if (/^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.|169\.254\.|0\.)/.test(ip)) {
+      return true;
+    }
+    // IPv6 loopback / unique local / link-local
+    if (/^(::1|fc00:|fe80:)/i.test(ip)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 async function probeDNS(hostname: string, timeoutMs = 500): Promise<{ ip: string | null; lookupMs: number; error?: string }> {
   const start = performance.now();
+  if (isPrivateOrDisallowedHost(hostname)) {
+    return { ip: null, lookupMs: 1, error: 'Access to private or internal network is disallowed (SSRF Protection)' };
+  }
   try {
     const lookupPromise = dns.lookup(hostname);
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('DNS Timeout')), timeoutMs)
     );
     const result = await Promise.race([lookupPromise, timeoutPromise]);
+    if (isPrivateOrDisallowedHost(hostname, result.address)) {
+      return { ip: null, lookupMs: Math.round(performance.now() - start), error: 'Access to private IP is disallowed (SSRF Protection)' };
+    }
     return { ip: result.address, lookupMs: Math.round(performance.now() - start) };
   } catch (err: any) {
     return { ip: null, lookupMs: Math.round(performance.now() - start), error: err.message };
@@ -194,6 +235,17 @@ async function probeTLS(hostname: string, port = 443, timeoutMs = 350): Promise<
   error?: string;
 }> {
   const start = performance.now();
+  if (isPrivateOrDisallowedHost(hostname)) {
+    return {
+      protocol: null,
+      authorized: false,
+      issuer: null,
+      validTo: null,
+      daysRemaining: null,
+      handshakeMs: 1,
+      error: 'SSRF blocked for internal/private host',
+    };
+  }
   return new Promise((resolve) => {
     let finished = false;
     const socket = tls.connect(
@@ -259,6 +311,14 @@ async function probeHTTPHeaders(urlStr: string, timeoutMs = 350): Promise<{
 }> {
   const start = performance.now();
   try {
+    const parsed = new URL(urlStr);
+    if (isPrivateOrDisallowedHost(parsed.hostname)) {
+      return { status: null, hsts: false, csp: false, xFrameOptions: false, probeMs: 1 };
+    }
+  } catch {
+    return { status: null, hsts: false, csp: false, xFrameOptions: false, probeMs: 1 };
+  }
+  try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -320,6 +380,10 @@ async function probeTargetInfrastructure(hostname: string, fullUrl: string, port
     timestamp: Date.now()
   };
 
+  if (PROBE_CACHE.size >= MAX_PROBE_CACHE_ENTRIES) {
+    const oldest = PROBE_CACHE.keys().next().value;
+    if (oldest) PROBE_CACHE.delete(oldest);
+  }
   PROBE_CACHE.set(cacheKey, result);
   return result;
 }
@@ -1716,6 +1780,23 @@ Return strictly valid JSON conforming to this schema without markdown formatting
     }
 
     let parsedReport: any = null;
+    let dnsResult: any = null;
+    let tlsResult: any = null;
+    let httpResult: any = null;
+
+    if (targetType === 'url' && targetValue) {
+      try {
+        const parsedUrl = new URL(targetValue.startsWith('http') ? targetValue : `https://${targetValue}`);
+        const hostname = parsedUrl.hostname;
+        const port = parsedUrl.port ? parseInt(parsedUrl.port, 10) : (parsedUrl.protocol === 'http:' ? 80 : 443);
+        const probe = await probeTargetInfrastructure(hostname, parsedUrl.href, port);
+        dnsResult = probe.dns;
+        tlsResult = probe.tls;
+        httpResult = probe.http;
+      } catch {
+        // Continue with heuristic probe
+      }
+    }
 
     // Primary model for deep inference: gemini-3.8-flash
     const modelsToTry = ['gemini-3.8-flash'];
@@ -1757,6 +1838,9 @@ Return strictly valid JSON conforming to this schema without markdown formatting
         targetTitle,
         persona,
         lang,
+        dnsResult,
+        tlsResult,
+        httpResult,
         totalPipelineMs: elapsed,
       });
     }
@@ -1783,6 +1867,14 @@ Return strictly valid JSON conforming to this schema without markdown formatting
       totalLatencyMs: elapsed,
       slaMet: elapsed < 1200,
       slaTargetMs: 1200,
+      dnsLookupMs: dnsResult?.lookupMs,
+      tlsHandshakeMs: tlsResult?.handshakeMs,
+      tlsVersion: tlsResult?.protocol,
+      certIssuer: tlsResult?.issuer,
+      certValidUntil: tlsResult?.validTo,
+      hstsEnabled: httpResult?.hsts,
+      cspEnabled: httpResult?.csp,
+      frameProtection: httpResult?.xFrameOptions,
       scrapingCompliance: {
         auditMethod: 'Passive Non-Intrusive Metadata Inspection',
         vietnamLawCompliance: 'Tuân thủ Điều 8 & 18 Luật An ninh mạng 2018 (Passive public metadata)',
@@ -1928,7 +2020,7 @@ ${JSON.stringify(strArr)}`;
       mergedTranslations[keys[i]] = allTranslatedValues[i] || values[i];
     }
 
-    TRANSLATION_CACHE.set(cacheKey, JSON.stringify(mergedTranslations));
+    putInTranslationCache(cacheKey, JSON.stringify(mergedTranslations));
     return res.json({ translations: mergedTranslations });
   } catch (err: any) {
     console.error('Translation API error:', err);
@@ -1958,6 +2050,14 @@ app.get('/robots.txt', (_req, res) => {
 
 app.get('/sitemap.xml', (_req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'sitemap.xml'));
+});
+
+// Offline Standalone Demo routes
+app.get('/standalone_demo.html', (_req, res) => {
+  res.sendFile(path.resolve(__dirname, 'standalone_demo.html'));
+});
+app.get('/verified_domains.js', (_req, res) => {
+  res.sendFile(path.resolve(__dirname, 'verified_domains.js'));
 });
 
 // Setup dev server with Vite or production static file serving
