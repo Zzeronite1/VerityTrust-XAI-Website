@@ -123,7 +123,7 @@ VerityTrust tích hợp ma trận đối chiếu pháp luật chuyên sâu:
    ```bash
    cp .env.example .env.local
    ```
-   *(Tùy chọn: Nhập `GEMINI_API_KEY` của bạn từ [Google AI Studio](https://aistudio.google.com/apikey). Nếu để trống, hệ thống sẽ tự động dùng động cơ Heuristic & Real-time Network Probe).*
+   *(Máy chủ backend tự động ưu tiên nạp cấu hình từ `.env.local`, sau đó bổ trợ từ `.env`. Cả hai file đều đã được cấu hình trong `.gitignore`. Tùy chọn: Nhập `GEMINI_API_KEY` của bạn từ [Google AI Studio](https://aistudio.google.com/apikey). Nếu để trống, hệ thống sẽ tự động dùng động cơ Heuristic & Real-time Network Probe).*
 
 4. **Khởi chạy ứng dụng:**
    ```bash

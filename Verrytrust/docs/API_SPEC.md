@@ -17,14 +17,16 @@ Thực hiện thẩm định an toàn, minh bạch và pháp lý cho một thự
   "targetType": "url", // "url" | "document" | "text" | "image"
   "targetValue": "https://example.com",
   "targetTitle": "Example Official Portal",
-  "fileData": "data:image/png;base64,...", // Tùy chọn (cho image/document)
-  "mimeType": "image/png",                 // Tùy chọn
+  "fileData": "data:image/png;base64,...", // Tùy chọn (chỉ ảnh trong chế độ deep; document gửi văn bản đã trích xuất qua targetValue)
+  "mimeType": "image/png",                 // Tùy chọn (image/png, image/jpeg)
   "persona": "consumer",                   // "consumer" | "business" | "legal"
   "engineMode": "deep",                    // "deep" | "simplified"
   "lang": "vi",                            // Mã ngôn ngữ (VD: "vi", "en", "ja",...)
   "userBirthYear": 2005                    // Tùy chọn: Năm sinh người dùng
 }
 ```
+
+> **Lưu ý về tải lên tệp:** Trường `fileData` hỗ trợ dữ liệu ảnh base64 (`image/png`, `image/jpeg`) khi quét chế độ `deep` thông qua Gemini Vision. Đối với tệp tài liệu (`targetType: "document"`), giao diện người dùng sẽ trích xuất văn bản từ tệp trước và truyền nội dung văn bản đó vào trường `targetValue`.
 
 ### Response (200 OK)
 ```json
