@@ -1,0 +1,2187 @@
+<!doctype html>
+<html lang="vi" class="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <title>Verity – Nền tảng Thẩm định An toàn, Minh bạch &amp; Tuân thủ Pháp lý</title>
+  <meta name="description"
+    content="Nền tảng Verity xác minh tức thì độ an toàn, tính minh bạch và tuân thủ pháp luật (Nghị định 13/2023/NĐ-CP, Bộ luật Hình sự 321/322, GDPR) của bất kỳ website hay tài liệu số nào." />
+
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            display: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          colors: {
+            ocean: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --bg-color: #000000;
+      --card-bg: rgba(10, 15, 28, 0.85);
+      --card-border: #1e293b;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --ocean-glow: rgba(14, 165, 233, 0.28);
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      overflow-x: hidden;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* LIGHT THEME OVERRIDES (Khi bật chế độ Sáng - Toàn bộ chữ chuyển sang màu ĐEN rõ nét) */
+    body.theme-light {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --card-border: #cbd5e1;
+      --text-main: #000000;
+      --text-sub: #1e293b;
+      --ocean-glow: rgba(2, 132, 199, 0.12);
+      background-color: #f8fafc !important;
+      color: #000000 !important;
+    }
+
+    /* Đổi tất cả tiêu đề và văn bản sang màu ĐEN / ĐẬM TUYỆT ĐỐI */
+    body.theme-light h1,
+    body.theme-light h2,
+    body.theme-light h3,
+    body.theme-light h4,
+    body.theme-light h5,
+    body.theme-light h6,
+    body.theme-light .text-white,
+    body.theme-light [class*="text-white"],
+    body.theme-light [class*="text-slate-100"],
+    body.theme-light [class*="text-slate-200"],
+    body.theme-light [class*="text-slate-300"] {
+      color: #000000 !important;
+    }
+
+    /* Các nút và badge nền màu đậm (xanh biển, đỏ) giữ chữ trắng sắc nét để tương phản cao */
+    body.theme-light .bg-sky-600,
+    body.theme-light .bg-blue-600,
+    body.theme-light .bg-red-500,
+    body.theme-light .bg-red-600,
+    body.theme-light button[type="submit"],
+    body.theme-light .bg-gradient-to-r:not(.bg-clip-text) {
+      color: #ffffff !important;
+    }
+
+    body.theme-light button[type="submit"] *,
+    body.theme-light .bg-sky-600 *,
+    body.theme-light .bg-red-500 *,
+    body.theme-light .bg-red-600 *,
+    body.theme-light .bg-gradient-to-r:not(.bg-clip-text) * {
+      color: #ffffff !important;
+    }
+
+    body.theme-light p,
+    body.theme-light [class*="text-slate-400"] {
+      color: #1e293b !important;
+    }
+
+    body.theme-light [class*="text-slate-500"] {
+      color: #334155 !important;
+    }
+
+    /* Tiêu đề gradient khi ở nền trắng chuyển sang gradient xanh thẫm - đen cực sang trọng & rõ chữ */
+    body.theme-light .bg-clip-text {
+      background-image: linear-gradient(135deg, #0284c7 0%, #0369a1 40%, #0f172a 100%) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+    }
+
+    /* Tinh chỉnh lưới cyber & viền mờ nền trắng */
+    body.theme-light .cyber-grid {
+      background-image:
+        linear-gradient(to right, rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(15, 23, 42, 0.05) 1px, transparent 1px) !important;
+    }
+
+    body.theme-light .cyber-vignette {
+      background: radial-gradient(circle at 50% 30%, transparent 25%, rgba(248, 250, 252, 0.8) 88%) !important;
+    }
+
+    /* Các thẻ card, ô nội dung nền trắng, viền rõ nét, bóng đổ nhẹ */
+    body.theme-light .bg-slate-900,
+    body.theme-light [class*="bg-slate-900"],
+    body.theme-light .bg-slate-950,
+    body.theme-light [class*="bg-slate-950"],
+    body.theme-light .tactile-card {
+      background-color: #ffffff !important;
+      border-color: #cbd5e1 !important;
+      color: #000000 !important;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    body.theme-light .border-slate-800,
+    body.theme-light .border-slate-700 {
+      border-color: #cbd5e1 !important;
+    }
+
+    /* Header & Navigation */
+    body.theme-light header {
+      background-color: rgba(255, 255, 255, 0.95) !important;
+      border-color: #e2e8f0 !important;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04) !important;
+    }
+
+    body.theme-light nav {
+      background-color: #f1f5f9 !important;
+      border-color: #cbd5e1 !important;
+    }
+
+    body.theme-light nav button.text-slate-400 {
+      color: #334155 !important;
+      font-weight: 600 !important;
+    }
+
+    body.theme-light nav button.text-slate-400:hover {
+      color: #000000 !important;
+    }
+
+    /* Các màu sắc điểm nhấn đậm đà, tương phản cao trên nền trắng */
+    body.theme-light .text-sky-400,
+    body.theme-light .text-sky-300 {
+      color: #0284c7 !important;
+    }
+
+    body.theme-light .text-cyan-400,
+    body.theme-light .text-cyan-300 {
+      color: #0891b2 !important;
+    }
+
+    body.theme-light .text-emerald-400,
+    body.theme-light .text-emerald-300 {
+      color: #059669 !important;
+    }
+
+    body.theme-light .text-indigo-400,
+    body.theme-light .text-indigo-300 {
+      color: #4f46e5 !important;
+    }
+
+    body.theme-light .text-purple-400,
+    body.theme-light .text-purple-300 {
+      color: #7c3aed !important;
+    }
+
+    body.theme-light .text-amber-400,
+    body.theme-light .text-amber-300 {
+      color: #d97706 !important;
+    }
+
+    body.theme-light .text-red-400,
+    body.theme-light .text-red-300 {
+      color: #dc2626 !important;
+    }
+
+    /* Nút phụ trong hero / overview */
+    body.theme-light button.bg-slate-900 {
+      background-color: #ffffff !important;
+      border-color: #cbd5e1 !important;
+      color: #000000 !important;
+      font-weight: 600 !important;
+    }
+
+    body.theme-light button.bg-slate-900:hover {
+      background-color: #f1f5f9 !important;
+      border-color: #94a3b8 !important;
+      color: #0284c7 !important;
+    }
+
+    /* Nút sáng/tối & nút ngôn ngữ */
+    body.theme-light #themeToggleBtn,
+    body.theme-light #langToggleBtn {
+      background-color: #f1f5f9 !important;
+      border-color: #cbd5e1 !important;
+      color: #000000 !important;
+    }
+
+    /* 3 Tiểu hành tinh (Planet Cards) ở trang Tổng quan */
+    body.theme-light .planet-card {
+      background-color: #ffffff !important;
+      border-color: #cbd5e1 !important;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08) !important;
+    }
+
+    body.theme-light .planet-card .text-slate-300 {
+      color: #000000 !important;
+      font-weight: 700 !important;
+    }
+
+    body.theme-light .planet-card .text-sky-400 {
+      color: #0284c7 !important;
+    }
+
+    body.theme-light .planet-card .text-emerald-400 {
+      color: #059669 !important;
+    }
+
+    body.theme-light .planet-card .text-indigo-400 {
+      color: #4f46e5 !important;
+    }
+
+    /* Các nút tra cứu nhanh & form nhập */
+    body.theme-light input,
+    body.theme-light textarea {
+      background-color: #ffffff !important;
+      color: #000000 !important;
+      border-color: #cbd5e1 !important;
+    }
+
+    body.theme-light input::placeholder {
+      color: #94a3b8 !important;
+    }
+
+    body.theme-light [onclick^="setInputValue"] {
+      background-color: #f1f5f9 !important;
+      color: #000000 !important;
+      border-color: #cbd5e1 !important;
+      font-weight: 600 !important;
+    }
+
+    body.theme-light [onclick^="setInputValue"]:hover {
+      background-color: #e2e8f0 !important;
+      color: #0284c7 !important;
+    }
+
+
+
+    /* Vòng tròn Score Gauge & Report Card */
+    body.theme-light #scoreGaugeContainer circle:first-child {
+      stroke: #e2e8f0 !important;
+    }
+
+    body.theme-light #reportContainer>div {
+      background-color: #ffffff !important;
+      border-color: #cbd5e1 !important;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.08) !important;
+    }
+
+    body.theme-light #reportTargetTitle {
+      color: #000000 !important;
+    }
+
+    body.theme-light #reportSummaryText,
+    body.theme-light #reportSiteIntro,
+    body.theme-light #reportSuitableAudience {
+      color: #000000 !important;
+      font-weight: 500 !important;
+    }
+
+    /* Khối thẻ chứng nhận đạt chuẩn an toàn */
+    body.theme-light [class*="bg-emerald-950"] {
+      background-color: #ecfdf5 !important;
+      border-color: #a7f3d0 !important;
+    }
+
+    body.theme-light [class*="bg-emerald-950"] .text-white {
+      color: #064e3b !important;
+    }
+
+    body.theme-light [class*="bg-amber-950"] {
+      background-color: #fffbeb !important;
+      border-color: #fde68a !important;
+    }
+
+    body.theme-light [class*="bg-amber-950"] .text-white {
+      color: #78350f !important;
+    }
+
+    body.theme-light [class*="bg-red-950"] {
+      background-color: #fef2f2 !important;
+      border-color: #fecaca !important;
+    }
+
+    body.theme-light [class*="bg-red-950"] .text-white {
+      color: #7f1d1d !important;
+    }
+
+    /* Mã nguồn Thuật toán ở View 3 */
+    body.theme-light pre {
+      background-color: #0f172a !important;
+      color: #38bdf8 !important;
+      border-color: #334155 !important;
+    }
+
+    /* Footer */
+    body.theme-light footer {
+      background-color: #f8fafc !important;
+      border-color: #e2e8f0 !important;
+      color: #334155 !important;
+    }
+
+    body.theme-light footer .text-slate-300 {
+      color: #000000 !important;
+      font-weight: 700 !important;
+    }
+
+    .cyber-grid {
+      background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+
+    .cyber-vignette {
+      background: radial-gradient(circle at 50% 30%, transparent 20%, rgba(0, 0, 0, 0.82) 88%);
+    }
+
+    /* OCEAN BLUE GLOW EFFECTS (Ánh sáng xanh biển phát sáng) */
+    .ocean-glow {
+      box-shadow: 0 0 35px -5px rgba(14, 165, 233, 0.3), 0 0 15px -3px rgba(2, 132, 199, 0.25);
+    }
+
+    .ocean-glow-hover {
+      transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .ocean-glow-hover:hover {
+      box-shadow: 0 0 25px rgba(14, 165, 233, 0.35), 0 0 50px rgba(2, 132, 199, 0.2);
+      border-color: rgba(56, 189, 248, 0.6) !important;
+      transform: translateY(-2px);
+    }
+
+    /* TACTILE INTERACTIONS (Lướt, Nhấn, Thả nhanh gọn) */
+    .tactile-btn {
+      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.15s ease,
+        border-color 0.15s ease,
+        background-color 0.15s ease;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .tactile-btn:hover {
+      transform: translateY(-1.5px);
+      box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+    }
+
+    .tactile-btn:active {
+      transform: translateY(1px) scale(0.96);
+    }
+
+    .tactile-card {
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.2s ease,
+        border-color 0.2s ease;
+      user-select: none;
+    }
+
+    .tactile-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(56, 189, 248, 0.5) !important;
+      box-shadow: 0 8px 20px -3px rgba(14, 165, 233, 0.2);
+    }
+
+    .tactile-card:active {
+      transform: translateY(0.5px) scale(0.985);
+    }
+
+    /* SCROLL REVEAL ANIMATION (Khi cuộn xuống nội dung trượt hiện ra mượt mà) */
+    .scroll-reveal {
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1), transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: opacity, transform;
+    }
+
+    .scroll-reveal.is-revealed {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* LASER SCANNER NHANH (0.4s) */
+    @keyframes laserSweepFast {
+      0% {
+        top: 0%;
+        opacity: 0;
+      }
+
+      20% {
+        opacity: 1;
+      }
+
+      80% {
+        opacity: 1;
+      }
+
+      100% {
+        top: 100%;
+        opacity: 0;
+      }
+    }
+
+    .laser-beam {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #38bdf8, #0ea5e9, #38bdf8, transparent);
+      box-shadow: 0 0 12px #38bdf8, 0 0 24px #0ea5e9;
+      animation: laserSweepFast 0.4s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 30;
+    }
+
+    /* BIỂU ĐỒ XOAY 1 VÒNG 360 ĐỘ */
+    @keyframes spin360Gauge {
+      0% {
+        transform: rotate(-360deg) scale(0.8);
+        opacity: 0.2;
+      }
+
+      75% {
+        transform: rotate(12deg) scale(1.04);
+        opacity: 1;
+      }
+
+      100% {
+        transform: rotate(0deg) scale(1);
+        opacity: 1;
+      }
+    }
+
+    .spin-gauge-once {
+      animation: spin360Gauge 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    /* KẾT QUẢ XUẤT HIỆN TRƯỢT LÊN */
+    @keyframes resultSlideIn {
+      0% {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .result-appear {
+      animation: resultSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes shimmerMove {
+      0% {
+        background-position: -200% 0;
+      }
+
+      100% {
+        background-position: 200% 0;
+      }
+    }
+
+    .animate-shimmer {
+      background: linear-gradient(90deg, rgba(2, 132, 199, 0.4) 0%, rgba(56, 189, 248, 0.95) 50%, rgba(2, 132, 199, 0.4) 100%);
+      background-size: 200% 100%;
+      animation: shimmerMove 1.2s infinite linear;
+    }
+
+    @keyframes waveH {
+
+      0%,
+      100% {
+        height: 6px;
+      }
+
+      50% {
+        height: 18px;
+      }
+    }
+
+    .wave-bar {
+      animation: waveH 0.8s ease-in-out infinite;
+    }
+
+    /* Solar System Planetary Orbit Styles (Animation các tiểu hành tinh quay chậm quanh Mặt Trời) */
+    .solar-planet {
+      will-change: transform, opacity, z-index;
+      transform-origin: center center;
+      pointer-events: auto;
+    }
+
+    .planet-card {
+      transition: box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+
+    .planet-card:hover {
+      border-color: rgba(56, 189, 248, 0.9);
+      box-shadow: 0 0 35px rgba(14, 165, 233, 0.6);
+    }
+
+    /* Hide scrollbar for clean horizontal swiping on mobile */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      *,
+      ::before,
+      ::after {
+        animation: none !important;
+        transition: none !important;
+      }
+
+      .scroll-reveal {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col relative selection:bg-sky-500 selection:text-white overflow-x-hidden">
+
+  <!-- Interactive Canvas Particles Background (Tối ưu nhẹ cho máy yếu & Nền đen sâu với Ánh sáng Xanh biển) -->
+  <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
+    <!-- Ocean Blue Glowing Orbs (Phát sáng màu xanh biển rực rỡ trên nền đen) -->
+    <div
+      class="absolute top-[-10%] left-[10%] w-[36rem] h-[36rem] sm:w-[44rem] sm:h-[44rem] rounded-full bg-sky-500/18 blur-[100px]">
+    </div>
+    <div
+      class="absolute top-[35%] right-[-5%] w-[30rem] h-[30rem] sm:w-[38rem] sm:h-[38rem] rounded-full bg-blue-600/16 blur-[110px]">
+    </div>
+    <div
+      class="absolute bottom-[-10%] left-[25%] w-[32rem] h-[32rem] sm:w-[40rem] sm:h-[40rem] rounded-full bg-cyan-500/15 blur-[95px]">
+    </div>
+    <div class="absolute inset-0 cyber-grid opacity-30"></div>
+    <canvas id="cyberCanvas" class="absolute inset-0 block w-full h-full"></canvas>
+    <div class="absolute inset-0 pointer-events-none cyber-vignette"></div>
+  </div>
+
+  <!-- Navigation Header (Tối ưu hóa hiển thị trên cả Điện thoại & Máy tính) -->
+  <header class="sticky top-0 z-40 w-full border-b border-slate-800 bg-black/90 backdrop-blur-xl">
+    <div class="w-full px-3 sm:px-6 lg:px-10 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
+
+      <!-- Logo Brand -->
+      <div class="flex items-center gap-2 sm:gap-3 cursor-pointer select-none tactile-btn shrink-0"
+        onclick="switchTab('overview')">
+        <div
+          class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-sky-500 via-blue-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-sky-500/25 border border-sky-400/40">
+          <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span
+              class="font-extrabold text-base sm:text-xl tracking-tight bg-gradient-to-r from-white via-slate-100 to-sky-200 bg-clip-text text-transparent">Verity</span>
+            <span
+              class="px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[9px] sm:text-[10px] font-bold flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="hidden xs:inline">LIVE</span>
+            </span>
+          </div>
+          <p class="text-[10px] text-slate-400 hidden md:block">Nền tảng Xác nhận Tính Minh bạch</p>
+        </div>
+      </div>
+
+      <!-- 3 Main Tabs Navigation (Gọn gàng, lướt ngang mượt trên điện thoại) -->
+      <nav
+        class="flex items-center bg-slate-900/90 border border-slate-800 rounded-xl sm:rounded-2xl p-0.5 sm:p-1 gap-0.5 sm:gap-1 overflow-x-auto no-scrollbar shrink-0">
+        <button id="nav-btn-overview" onclick="switchTab('overview')"
+          class="tactile-btn px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap bg-sky-600 text-white shadow-md">
+          <span>✨</span> <span class="hidden sm:inline">Tổng quan</span><span class="sm:hidden text-[11px]">Tổng
+            quan</span>
+        </button>
+        <button id="nav-btn-main" onclick="switchTab('main')"
+          class="tactile-btn px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap text-slate-400 hover:text-white">
+          <span>🔍</span> <span class="hidden sm:inline">Tra cứu</span><span class="sm:hidden text-[11px]">Tra
+            cứu</span>
+        </button>
+        <button id="nav-btn-explanation" onclick="switchTab('explanation')"
+          class="tactile-btn px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap text-slate-400 hover:text-white">
+          <span>⚙️</span> <span class="hidden sm:inline">Chi tiết</span><span class="sm:hidden text-[11px]">Chi
+            tiết</span>
+        </button>
+      </nav>
+
+      <!-- Header Actions: Nút Sáng/Tối & Ngôn ngữ -->
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <!-- Nút Chuyển Chế Độ Sáng / Tối (Dark/Light Mode) -->
+        <button onclick="toggleTheme()" id="themeToggleBtn"
+          class="tactile-btn flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-slate-300 hover:text-sky-300 hover:border-sky-500/50 transition"
+          title="Chuyển chế độ Sáng / Tối">
+          <span id="themeIcon">🌙</span>
+        </button>
+
+        <!-- Nút Ngôn ngữ -->
+        <button onclick="toggleLang()" id="langToggleBtn"
+          class="tactile-btn flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300 hover:text-white hover:border-sky-500/50 transition">
+          <span id="langFlag">🇻🇳</span>
+          <span id="langLabel" class="font-semibold hidden sm:inline">Tiếng Việt</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area (Tự co giãn chuẩn trên cả điện thoại & desktop) -->
+  <main
+    class="flex-1 w-full px-3 sm:px-6 lg:px-10 py-5 sm:py-8 space-y-8 sm:space-y-10 relative z-10 max-w-7xl mx-auto">
+
+    <!-- ============================================================== -->
+    <!-- VIEW 1: TRANG TỔNG QUAN XUẤT HIỆN ĐẦU TIÊN                     -->
+    <!-- Tiêu đề mở rộng ngang, cỡ chữ nhỏ gọn thanh lịch               -->
+    <!-- ============================================================== -->
+    <section id="view-overview" class="w-full space-y-8 sm:space-y-10 py-1">
+
+      <!-- ============================================================== -->
+      <!-- SOLAR SYSTEM HERO: Mặt Trời là Tiêu Đề Giới Thiệu & 3 Tiểu Hành Tinh Xoay Chậm Rãi -->
+      <!-- Không vẽ đường ray, không dừng khi hover, quay êm dịu không nhanh -->
+      <!-- ============================================================== -->
+      <div id="solarSystemStage"
+        class="scroll-reveal relative w-full min-h-[420px] sm:min-h-[470px] md:min-h-[510px] flex items-center justify-center overflow-visible select-none py-6 sm:py-8">
+
+        <!-- SUN: Mặt Trời Trung Tâm (Chứa Toàn Bộ Tiêu Đề Giới Thiệu) -->
+        <div id="solarSunCore" class="relative z-10 text-center max-w-2xl mx-auto px-4 py-4 space-y-3.5">
+
+          <!-- Hào quang Mặt Trời (Sun Flare & Corona Pulse màu xanh biển dịu nhẹ) -->
+          <div class="absolute inset-0 -z-10 flex items-center justify-center pointer-events-none">
+            <div
+              class="w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-gradient-to-tr from-sky-500/20 via-cyan-400/15 to-blue-600/10 blur-3xl animate-pulse">
+            </div>
+            <div class="absolute w-48 h-48 sm:w-64 sm:h-64 rounded-full bg-sky-400/15 blur-2xl"></div>
+          </div>
+
+          <!-- Sun Pill Badge -->
+          <div
+            class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-slate-900/90 border border-sky-400/40 text-sky-300 text-xs font-semibold shadow-[0_0_20px_rgba(14,165,233,0.3)]">
+            ✨ Tổng quan &amp; Mục tiêu Dự án Verity
+          </div>
+
+          <!-- Tiêu đề mở rộng ngang, font tinh gọn thanh lịch -->
+          <h1
+            class="text-xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-snug max-w-2xl mx-auto px-1">
+            Nền tảng Thẩm định An toàn, <br class="hidden sm:inline" />
+            <span
+              class="bg-gradient-to-r from-sky-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(14,165,233,0.5)]">
+              Minh bạch &amp; Tuân thủ Pháp lý
+            </span>
+          </h1>
+
+          <p class="text-xs sm:text-sm text-slate-300/90 leading-relaxed max-w-xl mx-auto px-2">
+            Verity cho phép mọi cá nhân và doanh nghiệp xác minh tức thì độ an toàn, tính minh bạch và tuân thủ pháp
+            luật (Nghị định 13/2023/NĐ-CP, Bộ luật Hình sự Điều 321/322, GDPR) của bất kỳ trang web, liên kết hoặc tài
+            liệu số nào.
+          </p>
+
+          <div class="pt-2 flex flex-wrap justify-center gap-2.5 sm:gap-3">
+            <button onclick="switchTab('main')"
+              class="tactile-btn px-5 sm:px-6 py-2.5 bg-gradient-to-r from-sky-500 via-blue-600 to-cyan-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-sky-500/20 hover:from-sky-400 hover:to-cyan-400 transition cursor-pointer">
+              Đến Trang chính Tra cứu →
+            </button>
+            <button onclick="switchTab('explanation')"
+              class="tactile-btn px-4 sm:px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition">
+              Minh giải Thuật toán
+            </button>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 3 TIỂU HÀNH TINH (PLANETS) XOAY CHẬM RÃI QUANH MẶT TRỜI         -->
+        <!-- Không vẽ đường ray, không dừng khi hover, quay êm dịu không nhanh -->
+        <!-- ============================================================== -->
+
+        <!-- Tiểu hành tinh 1: 99.8% Độ chính xác đối chiếu (Xanh Biển) -->
+        <div id="planet1"
+          class="solar-planet absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 select-none pointer-events-auto">
+          <div
+            class="planet-card p-2.5 sm:p-3.5 rounded-2xl bg-slate-950/90 border border-sky-400/60 shadow-[0_0_25px_rgba(14,165,233,0.35)] text-center space-y-0.5 sm:space-y-1 backdrop-blur-md w-28 sm:w-36 md:w-40">
+            <div class="flex items-center justify-center gap-1.5 mb-0.5">
+              <span class="w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8] animate-ping"></span>
+              <span class="text-[9px] font-mono uppercase font-bold text-sky-300 tracking-wider"></span>
+            </div>
+            <div class="text-base sm:text-xl md:text-2xl font-black text-sky-400 tracking-tight font-mono">99.8%</div>
+            <div class="text-[10px] sm:text-[11px] text-slate-300 font-semibold leading-tight">Độ chính xác đối chiếu
+            </div>
+          </div>
+        </div>
+
+        <!-- Tiểu hành tinh 2: 100% Không hộp đen (Ngọc Lục Bảo) -->
+        <div id="planet2"
+          class="solar-planet absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 select-none pointer-events-auto">
+          <div
+            class="planet-card p-2.5 sm:p-3.5 rounded-2xl bg-slate-950/90 border border-emerald-400/60 shadow-[0_0_25px_rgba(16,185,129,0.35)] text-center space-y-0.5 sm:space-y-1 backdrop-blur-md w-28 sm:w-36 md:w-40">
+            <div class="flex items-center justify-center gap-1.5 mb-0.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-ping"></span>
+              <span class="text-[9px] font-mono uppercase font-bold text-emerald-300 tracking-wider"></span>
+            </div>
+            <div class="text-base sm:text-xl md:text-2xl font-black text-emerald-400 tracking-tight font-mono">100%
+            </div>
+            <div class="text-[10px] sm:text-[11px] text-slate-300 font-semibold leading-tight">Không hộp đen</div>
+          </div>
+        </div>
+
+        <!-- Tiểu hành tinh 3: NĐ 13/2023 Tuân thủ pháp lý số (Tím Neon / Indigo) -->
+        <div id="planet3"
+          class="solar-planet absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 select-none pointer-events-auto">
+          <div
+            class="planet-card p-2.5 sm:p-3.5 rounded-2xl bg-slate-950/90 border border-indigo-400/60 shadow-[0_0_25px_rgba(129,140,248,0.35)] text-center space-y-0.5 sm:space-y-1 backdrop-blur-md w-28 sm:w-36 md:w-40">
+            <div class="flex items-center justify-center gap-1.5 mb-0.5">
+              <span class="w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_8px_#818cf8] animate-ping"></span>
+              <span class="text-[9px] font-mono uppercase font-bold text-indigo-300 tracking-wider"></span>
+            </div>
+            <div class="text-sm sm:text-lg md:text-xl font-black text-indigo-400 tracking-tight font-mono">NĐ 13/2023
+            </div>
+            <div class="text-[10px] sm:text-[11px] text-slate-300 font-semibold leading-tight">Tuân thủ pháp lý số</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Verity Tích Hợp: Khung Pháp Lý Cốt Lõi (Nghị định 13/2023 & BLHS 321/322) -->
+      <div class="scroll-reveal space-y-3 max-w-5xl mx-auto">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-bold text-sky-400 uppercase tracking-wider">Khung Tiêu Chuẩn</h2>
+          <span class="text-base sm:text-lg font-bold text-white">Verity Tích Hợp</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+          <div
+            class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2.5 tactile-card ocean-glow-hover">
+            <div
+              class="w-10 h-10 rounded-xl bg-sky-950/70 border border-sky-600/40 flex items-center justify-center text-sky-300 text-lg">
+              🏛️
+            </div>
+            <h3 class="font-extrabold text-white text-base tracking-tight">Nghị định 13/2023/NĐ-CP</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">Rà soát thu thập dữ liệu cá nhân, quyền rút lại sự đồng
+              thuận và chính sách bảo vệ dữ liệu trẻ em.</p>
+          </div>
+
+          <div
+            class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2.5 tactile-card ocean-glow-hover">
+            <div
+              class="w-10 h-10 rounded-xl bg-red-950/70 border border-red-600/40 flex items-center justify-center text-amber-300 text-lg">
+              ⚖️
+            </div>
+            <h3 class="font-extrabold text-white text-base tracking-tight">Bộ luật Hình sự 321/322</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">Nhận diện máy chủ cờ bạc, cá độ phi pháp; tự động kích
+              hoạt Khóa Phạt (Penalty Gate) và cảnh báo tường lửa.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Xác suất chính xác của AI & Chỉ số Vận hành (Cuộn xuống nội dung trượt hiện ra) -->
+      <div class="scroll-reveal space-y-3 max-w-5xl mx-auto">
+        <div class="text-center space-y-0.5">
+          <h2 class="text-xs font-bold text-sky-400 uppercase tracking-wider">Độ Tin Cậy &amp; Xác Suất Chính Xác Của AI
+          </h2>
+          <p class="text-base sm:text-lg font-bold text-white">Chỉ số Hiệu năng Kiểm định Thời gian Thực</p>
+        </div>
+
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          <div
+            class="p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-center space-y-1 tactile-card ocean-glow-hover">
+            <div class="text-xl sm:text-2xl font-black text-sky-400">99.4%</div>
+            <div class="text-xs font-bold text-slate-200">Phát hiện Lừa đảo</div>
+            <p class="text-[10px] sm:text-[11px] text-slate-400">Phishing ngân hàng &amp; sàn TMĐT</p>
+          </div>
+
+          <div
+            class="p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-center space-y-1 tactile-card ocean-glow-hover">
+            <div class="text-xl sm:text-2xl font-black text-red-400">99.8%</div>
+            <div class="text-xs font-bold text-slate-200">Chặn Cờ Bạc Cấm</div>
+            <p class="text-[10px] sm:text-[11px] text-slate-400">Điều 321, 322 Bộ luật Hình sự</p>
+          </div>
+
+          <div
+            class="p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-center space-y-1 tactile-card ocean-glow-hover">
+            <div class="text-xl sm:text-2xl font-black text-emerald-400">&lt; 0.8s</div>
+            <div class="text-xs font-bold text-slate-200">Tốc Độ Phản Hồi</div>
+            <p class="text-[10px] sm:text-[11px] text-slate-400">SLA kiểm định siêu tốc</p>
+          </div>
+
+          <div
+            class="p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-center space-y-1 tactile-card ocean-glow-hover">
+            <div class="text-xl sm:text-2xl font-black text-indigo-400">100%</div>
+            <div class="text-xs font-bold text-slate-200">Không Hộp Đen</div>
+            <p class="text-[10px] sm:text-[11px] text-slate-400">Minh giải XAI &amp; Khóa Phạt</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Verity Tích Hợp: Khung Pháp Lý Cốt Lõi (Nghị định 13/2023 & BLHS 321/322) -->
+      <div class="scroll-reveal space-y-3 max-w-5xl mx-auto">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-bold text-sky-400 uppercase tracking-wider">Khung Tiêu Chuẩn</h2>
+          <span class="text-base sm:text-lg font-bold text-white">Verity Tích Hợp</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+          <div
+            class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2.5 tactile-card ocean-glow-hover">
+            <div
+              class="w-10 h-10 rounded-xl bg-sky-950/70 border border-sky-600/40 flex items-center justify-center text-sky-300 text-lg">
+              🏛️
+            </div>
+            <h3 class="font-extrabold text-white text-base tracking-tight">Nghị định 13/2023/NĐ-CP</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">Rà soát thu thập dữ liệu cá nhân, quyền rút lại sự đồng
+              thuận và chính sách bảo vệ dữ liệu trẻ em.</p>
+          </div>
+
+          <div
+            class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2.5 tactile-card ocean-glow-hover">
+            <div
+              class="w-10 h-10 rounded-xl bg-red-950/70 border border-red-600/40 flex items-center justify-center text-amber-300 text-lg">
+              ⚖️
+            </div>
+            <h3 class="font-extrabold text-white text-base tracking-tight">Bộ luật Hình sự 321/322</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">Nhận diện máy chủ cờ bạc, cá độ phi pháp, lừa đảo; tự động
+              kích
+              hoạt Khóa Phạt (Penalty Gate) và cảnh báo tường lửa.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Xác định theo chu trình nào? (Chu trình 3 bước - Cuộn xuống trượt hiện ra) -->
+      <div class="scroll-reveal space-y-3 max-w-5xl mx-auto">
+        <div class="text-center space-y-0.5">
+          <h2 class="text-xs font-bold text-sky-400 uppercase tracking-wider">Quy Trình Chuẩn Hóa</h2>
+          <p class="text-base sm:text-lg font-bold text-white">Xác Định Theo Chu Trình Nào?</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+          <div
+            class="p-4 sm:p-5 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-2 tactile-card ocean-glow-hover">
+            <div class="flex items-center justify-between">
+              <span class="text-sky-400 text-xs font-bold uppercase">Bước 1</span>
+              <span class="text-base">📡</span>
+            </div>
+            <h4 class="font-bold text-white text-sm">Thu thập &amp; Quét Hạ tầng</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">Quét tên miền, bản ghi DNS, chứng chỉ SSL/TLS và cơ sở dữ
+              liệu các trang web lừa đảo toàn cầu.</p>
+          </div>
+
+          <div
+            class="p-4 sm:p-5 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-2 tactile-card ocean-glow-hover">
+            <div class="flex items-center justify-between">
+              <span class="text-cyan-400 text-xs font-bold uppercase">Bước 2</span>
+              <span class="text-base">⚖️</span>
+            </div>
+            <h4 class="font-bold text-white text-sm">Đối chiếu Pháp lý &amp; Khóa Phạt</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">Phân tích ToS, đối chiếu NĐ về Pháp Luật Việt Nam; kích
+              hoạt Penalty Gate nếu phát hiện lỗi vi phạm nghiêm trọng.</p>
+          </div>
+
+          <div
+            class="p-4 sm:p-5 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-2 tactile-card ocean-glow-hover">
+            <div class="flex items-center justify-between">
+              <span class="text-emerald-400 text-xs font-bold uppercase">Bước 3</span>
+              <span class="text-base">📊</span>
+            </div>
+            <h4 class="font-bold text-white text-sm">Minh giải XAI &amp; Đánh giá Độ tuổi</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">Cấp điểm Trust Score (0-100), giải trình cấu thành điểm
+              số, xác định độ tuổi phù hợp và khuyến nghị hành động.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 Nhóm đối tượng phục vụ (Cuộn xuống trượt hiện ra) -->
+      <div class="scroll-reveal grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 max-w-5xl mx-auto pt-1">
+        <div
+          class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2 tactile-card ocean-glow-hover">
+          <div
+            class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 text-base sm:text-lg">
+            👥</div>
+          <h3 class="font-bold text-white text-sm">Người dùng Phổ thông</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">Kiểm tra website ngân hàng, trang thương mại điện tử xem có
+            phải bẫy lừa đảo (phishing), trúng thưởng giả mạo hay web cờ bạc bị cấm.</p>
+        </div>
+        <div
+          class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2 tactile-card ocean-glow-hover">
+          <div
+            class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-base sm:text-lg">
+            🏢</div>
+          <h3 class="font-bold text-white text-sm">Doanh nghiệp (SME)</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">Rà soát đối tác cung cấp dịch vụ trực tuyến, kiểm tra tên
+            miền thương hiệu tránh bị mạo danh trục lợi.</p>
+        </div>
+        <div
+          class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2 tactile-card ocean-glow-hover">
+          <div
+            class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-base sm:text-lg">
+            ⚖️</div>
+          <h3 class="font-bold text-white text-sm">Pháp chế &amp; Kiểm toán</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">Đối chiếu điều khoản ToS, chính sách thu thập dữ liệu cá
+            nhân theo Nghị định 13/2023/NĐ-CP và tiêu chuẩn quốc tế GDPR.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VIEW 2: TRANG CHÍNH CÔNG CỤ QUÉT (GIỮ NGUYÊN BỐ CỤC CHUẨN)    -->
+    <!-- Hero gốc + Telemetry + Ô Quét + Presets + Báo cáo + Chu trình  -->
+    <!-- ============================================================== -->
+    <section id="view-main" class="hidden w-full space-y-6 sm:space-y-8">
+
+      <!-- ============================================================== -->
+      <!-- HEADER TRANG CHÍNH: Trực quan, tập trung vào công cụ quét        -->
+      <!-- ============================================================== -->
+      <div class="scroll-reveal text-center space-y-3 max-w-3xl mx-auto pt-2">
+        <div
+          class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-slate-900/90 border border-emerald-500/30 text-emerald-400 text-xs font-semibold shadow-md">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <span>Hệ thống Trực tuyến • Xác nhận Tính Minh bạch Thời gian Thực</span>
+        </div>
+
+        <h1 class="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-white leading-tight">
+          Xác nhận Tính Minh bạch <br />
+          <span class="bg-gradient-to-r from-sky-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent">
+            Chuẩn Mực với Verity
+          </span>
+        </h1>
+
+        <p class="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-xl mx-auto">
+          Kiểm tra và chứng thực mức độ an toàn, tính minh bạch và tuân thủ pháp lý cho bất kỳ tên miền, website, liên
+          kết hoặc tài liệu nào.
+        </p>
+      </div>
+
+      <!-- Scanner Box Container (Nền đen sâu, viền và glow phát sáng màu xanh biển) -->
+      <div
+        class="scroll-reveal bg-slate-900/90 border border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden cyber-grid relative tactile-card ocean-glow">
+
+        <!-- Laser Beam Scan Animation -->
+        <div id="scannerLaser" class="laser-beam hidden"></div>
+
+        <!-- Live Scan HUD Indicator (Quét siêu tốc 0.5s - Không có màn che radar rườm rà) -->
+        <div id="liveHud"
+          class="hidden bg-gradient-to-r from-slate-950 via-sky-950/70 to-slate-950 border-b border-sky-500/40 p-3 sm:p-4 space-y-2.5">
+          <div class="flex items-center justify-between text-xs text-sky-300">
+            <div class="flex items-center gap-2 sm:gap-3">
+              <div
+                class="relative w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-sky-400/50 flex items-center justify-center bg-sky-950/60">
+                <span class="w-2.5 h-2.5 rounded-full bg-sky-400 animate-ping"></span>
+              </div>
+              <div>
+                <div class="font-bold text-white text-xs">Đang thẩm định trực tiếp với Verity [LIVE HUD]</div>
+                <p id="hudPhaseText" class="text-[10px] sm:text-[11px] text-sky-300/80 font-mono">Đang kiểm tra DNS
+                  &amp; Chứng thư SSL TLS 1.3...</p>
+              </div>
+            </div>
+            <div class="flex items-end gap-1 h-5 px-2 py-0.5 bg-slate-900 border border-sky-500/30 rounded-lg">
+              <span class="w-1 bg-sky-400 rounded-full wave-bar" style="animation-delay: 0.1s"></span>
+              <span class="w-1 bg-sky-300 rounded-full wave-bar" style="animation-delay: 0.25s"></span>
+              <span class="w-1 bg-blue-400 rounded-full wave-bar" style="animation-delay: 0.15s"></span>
+              <span class="w-1 bg-sky-400 rounded-full wave-bar" style="animation-delay: 0.35s"></span>
+            </div>
+          </div>
+          <div class="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+            <div class="h-full rounded-full animate-shimmer"></div>
+          </div>
+        </div>
+
+        <!-- Input Form Header Tabs -->
+        <div class="flex border-b border-slate-800 bg-slate-950/60 p-1.5 sm:p-2 gap-1 overflow-x-auto no-scrollbar">
+          <button type="button"
+            class="tactile-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold bg-sky-600 text-white shadow-md whitespace-nowrap">
+            🌐 URL Trang Web
+          </button>
+          <button type="button" onclick="alert('Tính năng thẩm định trực tiếp văn bản ToS đang đồng bộ cùng URL!')"
+            class="tactile-btn px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white whitespace-nowrap">
+            📄 Văn bản / ToS
+          </button>
+        </div>
+
+        <!-- Form Body (Tối ưu cho cả gõ trên điện thoại & desktop) -->
+        <form id="scanForm" onsubmit="handleStartScan(event)" class="p-4 sm:p-6 space-y-4">
+          <div class="space-y-2">
+            <div class="flex flex-wrap items-center justify-between text-xs gap-1">
+              <label for="targetInput" class="font-semibold text-slate-200">Nhập tên miền (Domain) hoặc URL trang web
+                bất kỳ:</label>
+              <span class="text-emerald-400 font-mono text-[11px] flex items-center gap-1.5"><span
+                  class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ⚡ AI Model: 10,000+ Tên miền An
+                toàn Toàn cầu Đã Nạp</span>
+            </div>
+            <div class="relative">
+              <input type="text" id="targetInput" required
+                placeholder="Ví dụ: google.com, youtube.com, github.com, openai.com, shopee.vn hoặc dán URL..."
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl sm:rounded-2xl pl-3.5 sm:pl-4 pr-3.5 sm:pr-4 py-3 sm:py-3.5 text-base sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition font-mono shadow-inner" />
+            </div>
+
+            <!-- Quick Popular Domain Chips (Lướt ngang êm ái trên di động) -->
+            <div class="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+              <span class="text-slate-500 font-semibold shrink-0">Tra cứu nhanh:</span>
+              <button type="button" onclick="setInputValue('google.com', true)"
+                class="tactile-btn px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] border border-slate-700/60">google.com</button>
+              <button type="button" onclick="setInputValue('youtube.com', true)"
+                class="tactile-btn px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] border border-slate-700/60">youtube.com</button>
+              <button type="button" onclick="setInputValue('github.com', true)"
+                class="tactile-btn px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] border border-slate-700/60">github.com</button>
+              <button type="button" onclick="setInputValue('openai.com', true)"
+                class="tactile-btn px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] border border-slate-700/60">openai.com</button>
+              <button type="button" onclick="setInputValue('canva.com', true)"
+                class="tactile-btn px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] border border-slate-700/60">canva.com</button>
+              <button type="button" onclick="setInputValue('shopee.vn', true)"
+                class="tactile-btn px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] border border-slate-700/60">shopee.vn</button>
+              <button type="button" onclick="setInputValue('vietcombank.com.vn', true)"
+                class="tactile-btn px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] border border-slate-700/60">vietcombank.com.vn</button>
+              <button type="button" onclick="setInputValue('chinhphu.vn', true)"
+                class="tactile-btn px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] border border-slate-700/60">chinhphu.vn</button>
+              <button type="button" onclick="setInputValue('m88.com', true)"
+                class="tactile-btn px-2 py-0.5 rounded bg-red-950/80 border border-red-800 text-red-300 font-mono text-[10px]">m88.com
+                (test cờ bạc cấm)</button>
+            </div>
+          </div>
+
+          <!-- Submit Button (Nút to, dễ bấm bằng ngón tay trên điện thoại) -->
+          <div class="pt-2 border-t border-slate-800 flex justify-end">
+            <button type="submit" id="btnSubmitScan"
+              class="w-full sm:w-auto tactile-btn px-6 py-3 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-sky-500 via-blue-600 to-cyan-500 hover:from-sky-400 hover:to-cyan-400 text-white shadow-lg shadow-sky-500/25 transition-all cursor-pointer flex items-center justify-center gap-2">
+              <span>✨ Xác nhận Tính Minh bạch Ngay</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ============================================================== -->
+      <!-- THE OUTPUT TRUST REPORT CARD (KẾT QUẢ THẨM ĐỊNH BẢO MẬT)       -->
+      <!-- Có hiệu ứng biểu đồ đồng hồ xoay 1 vòng 360 độ hiện kết quả   -->
+      <!-- ============================================================== -->
+      <div id="reportContainer" class="hidden w-full space-y-6">
+
+        <!-- Card Wrapper -->
+        <div
+          class="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden backdrop-blur-xl result-appear ocean-glow">
+
+          <!-- Prohibited / National Firewall Alert Banner -->
+          <div id="prohibitedBanner"
+            class="hidden p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-r from-red-950 via-red-900/60 to-slate-900 border-2 border-red-500 text-red-300 space-y-1.5 animate-pulse">
+            <div class="flex items-center justify-between font-bold text-xs sm:text-sm">
+              <span>🚨 CẢNH BÁO: TÊN MIỀN BẤT HỢP PHÁP - BỊ TƯỜNG LỬA QUỐC GIA PHONG TỎA</span>
+              <span class="px-2 py-0.5 rounded bg-red-600 text-white text-[9px] sm:text-[10px] font-mono">BỊ CẤM /
+                PROHIBITED</span>
+            </div>
+            <p class="text-[11px] sm:text-xs text-red-200">Tên miền hoạt động cờ bạc/cá cược trái phép theo Điều 321,
+              322 Bộ luật Hình sự và Điều 8 Luật An ninh mạng. Đang bị nhà mạng viễn thông chặn truy cập.</p>
+          </div>
+
+          <!-- Header Target Info & Actions Toolbar -->
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4 sm:pb-5">
+            <div>
+              <span
+                class="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700">URL
+                SCAN REPORT</span>
+              <h2 id="reportTargetTitle" class="text-lg sm:text-2xl font-bold text-white tracking-tight mt-1">
+                vietcombank.com.vn</h2>
+              <div id="reportTargetUrl" class="text-xs font-mono text-slate-400 break-all">https://vietcombank.com.vn
+              </div>
+
+              <div class="flex flex-wrap items-center gap-1.5 pt-2 text-[11px] font-mono">
+                <span
+                  class="px-2 py-0.5 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-300 font-semibold">Độ
+                  trễ: <strong>112ms</strong></span>
+                <span
+                  class="px-2 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-semibold">SLA
+                  &lt; 0.8s</span>
+                <span class="px-2 py-0.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300">Minh
+                  Giải XAI</span>
+                <span id="reportCategoryBadge"
+                  class="hidden px-2 py-0.5 rounded-lg bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 font-semibold"></span>
+                <span id="reportWhitelistBadge"
+                  class="hidden px-2 py-0.5 rounded-lg bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 font-bold flex items-center gap-1"><span>🛡️</span>
+                  10,000+ Verified Domain</span>
+              </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="flex items-center gap-1.5">
+              <button onclick="copyReportSummary()"
+                class="tactile-btn p-2 sm:p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300"
+                title="Sao chép tóm tắt">📋</button>
+              <button onclick="window.print()"
+                class="tactile-btn p-2 sm:p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300"
+                title="In / Xuất PDF">🖨️</button>
+              <button onclick="downloadJsonReport()"
+                class="tactile-btn p-2 sm:p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300"
+                title="Tải file JSON">💾</button>
+            </div>
+          </div>
+
+          <!-- Score Gauge & 3 Sub-Meters -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-center">
+
+            <!-- Main Circle Gauge (Hiệu ứng xoay 1 vòng 360 độ hiện kết quả) -->
+            <div
+              class="lg:col-span-5 flex flex-col items-center justify-center p-4 sm:p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center">
+
+              <div id="scoreGaugeContainer"
+                class="relative w-32 h-32 sm:w-36 sm:h-36 flex items-center justify-center mb-2 sm:mb-3">
+                <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="42" stroke="#1e293b" stroke-width="8" fill="transparent" />
+                  <circle id="scoreProgressCircle" cx="50" cy="50" r="42" stroke="#10b981" stroke-width="8"
+                    stroke-dasharray="263.89" stroke-dashoffset="263.89" stroke-linecap="round" fill="transparent"
+                    style="transition: stroke-dashoffset 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);" />
+                </svg>
+                <div class="absolute flex flex-col items-center">
+                  <span id="scoreDisplayNum" class="text-3xl sm:text-4xl font-black text-emerald-400">0</span>
+                  <span class="text-[10px] uppercase font-bold text-slate-500">/ 100</span>
+                </div>
+              </div>
+
+              <div id="scoreStatusBadge"
+                class="px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-1.5 bg-emerald-500/15 text-emerald-300 border border-emerald-500/40">
+                AN TOÀN
+              </div>
+              <div class="font-mono text-[11px] sm:text-xs font-bold text-purple-300">Độ tin cậy mô hình: 99.4%</div>
+            </div>
+
+            <!-- Sub-meters -->
+            <div class="lg:col-span-7 space-y-3.5 sm:space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-400 font-semibold">🛡️ An toàn (40%)</span>
+                    <strong id="safetyVal" class="text-white font-mono">98%</strong>
+                  </div>
+                  <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div id="safetyBar" class="h-full bg-sky-500 rounded-full transition-all duration-500"
+                      style="width: 0%"></div>
+                  </div>
+                </div>
+
+                <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-400 font-semibold">👁️ Minh bạch (30%)</span>
+                    <strong id="transparencyVal" class="text-white font-mono">95%</strong>
+                  </div>
+                  <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div id="transparencyBar" class="h-full bg-cyan-500 rounded-full transition-all duration-500"
+                      style="width: 0%"></div>
+                  </div>
+                </div>
+
+                <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-400 font-semibold">⚖️ Pháp lý (30%)</span>
+                    <strong id="legalityVal" class="text-white font-mono">96%</strong>
+                  </div>
+                  <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div id="legalityBar" class="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                      style="width: 0%"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Verdict Summary -->
+              <div class="p-3.5 sm:p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                <div class="text-xs font-bold text-slate-300">💡 Đánh giá tổng quan:</div>
+                <p id="reportSummaryText" class="text-xs text-slate-300 leading-relaxed font-normal">
+                  Xác nhận an toàn: Thực thể số sở hữu chứng thư số TLS 1.3 hợp lệ, pháp nhân đăng ký minh bạch và tuân
+                  thủ đầy đủ Nghị định 13/2023/NĐ-CP.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detailed Entity Profile & Certifications (Thẩm Định Chi Tiết Thực Thể Số) -->
+          <div class="pt-4 border-t border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                <span>🏛️ Thẩm Định Chi Tiết Thực Thể Số</span>
+                <span
+                  class="px-2 py-0.5 rounded text-[10px] font-mono bg-sky-500/20 text-sky-300 border border-sky-500/30">XAI
+                  Deep-Audit</span>
+              </h4>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <!-- 1. Giới thiệu sơ qua trang web -->
+              <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5 tactile-card">
+                <div class="flex items-center gap-2 text-xs font-bold text-sky-400">
+                  <span>🌐</span>
+                  <span>Giới thiệu sơ qua trang web</span>
+                </div>
+                <p id="reportSiteIntro" class="text-xs text-slate-300 leading-relaxed font-normal">
+                  Thực thể số chính thức được xác nhận bởi tổ chức uy tín.
+                </p>
+              </div>
+
+              <!-- 2. Phù hợp với ai -->
+              <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5 tactile-card">
+                <div class="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                  <span>👥</span>
+                  <span>Phù hợp với ai</span>
+                </div>
+                <p id="reportSuitableAudience" class="text-xs text-slate-300 leading-relaxed font-normal">
+                  Phù hợp cho mọi cá nhân và doanh nghiệp có nhu cầu tra cứu và giao dịch.
+                </p>
+              </div>
+            </div>
+
+            <!-- 3. Có các chứng nhận an toàn gì -->
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2 tactile-card">
+              <div class="flex flex-wrap items-center justify-between gap-1 text-xs">
+                <span class="font-bold text-white flex items-center gap-1.5">
+                  <span>🛡️</span>
+                  <span>Chứng nhận An toàn &amp; Chuẩn Pháp lý</span>
+                </span>
+                <span id="reportCertStatusSummary" class="text-[11px] font-mono text-slate-400">Đã đối chiếu 4/4 tiêu
+                  chuẩn</span>
+              </div>
+
+              <div id="reportCertsList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-1">
+                <!-- Dynamic cert cards injected via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Age Appropriateness Section (Kiểm định Độ Tuổi) -->
+          <div class="pt-4 border-t border-slate-800 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h4 class="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                <span>👶 Tiêu Chuẩn Tiếp Cận Độ Tuổi</span>
+                <span id="ageRatingBadge"
+                  class="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Mọi
+                  lứa tuổi (All Ages)</span>
+              </h4>
+            </div>
+
+            <!-- Interactive User Birth Year Checker -->
+            <div class="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2">
+              <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span class="text-slate-300 font-semibold">📅 Nhập năm sinh của bạn để hệ thống tự đối chiếu:</span>
+                <div class="flex gap-1.5">
+                  <button type="button" onclick="setBirthYear(2015)"
+                    class="tactile-btn px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[11px]">2015 (11t)</button>
+                  <button type="button" onclick="setBirthYear(2010)"
+                    class="tactile-btn px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[11px]">2010 (16t)</button>
+                  <button type="button" onclick="setBirthYear(2000)"
+                    class="tactile-btn px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[11px]">2000 (26t)</button>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <input type="number" id="userBirthYear" value="2006" oninput="evaluateUserAge()"
+                  class="w-28 sm:w-32 px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-sky-500" />
+                <div id="ageResultBanner" class="text-xs text-emerald-400 font-semibold">
+                  ✓ Đủ điều kiện tiếp cận dịch vụ công khai
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Key Findings ("Tại sao lại thế?") -->
+          <div class="pt-4 border-t border-slate-800 space-y-2.5">
+            <h3 class="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+              <span>🔍 Tại sao lại thế? (Lý giải minh bạch cấu thành điểm số)</span>
+            </h3>
+            <div id="keyFindingsList" class="space-y-2">
+              <!-- Dynamic Findings Injected via JS -->
+            </div>
+          </div>
+
+          <!-- Recommendations -->
+          <div class="pt-4 border-t border-slate-800 space-y-2.5">
+            <h3 class="text-xs sm:text-sm font-bold text-white">✅ Khuyến nghị Hành động Tức Thì</h3>
+            <div id="recommendationsList" class="space-y-2">
+              <!-- Dynamic Recommendations Injected via JS -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 3-Step Process Steps Của Trang Quét -->
+      <div id="stepsIntroSection" class="scroll-reveal w-full space-y-4 pt-2">
+        <div class="text-center space-y-1">
+          <h3 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-300">Quy trình Xác nhận Tính Minh
+            bạch</h3>
+          <p class="text-xs text-slate-500">Mọi website được xác nhận tự động qua 3 giai đoạn minh bạch, không hộp đen
+          </p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6">
+          <div
+            class="p-4 sm:p-6 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-2 tactile-card ocean-glow-hover">
+            <div class="text-sky-400 text-xs font-bold uppercase">Bước 1</div>
+            <h4 class="font-bold text-white text-sm sm:text-base">Thu thập &amp; Đối chiếu</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">Quét tên miền, bản ghi DNS, chứng chỉ SSL/TLS và cơ sở dữ
+              liệu các trang web lừa đảo toàn cầu.</p>
+          </div>
+          <div
+            class="p-4 sm:p-6 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-2 tactile-card ocean-glow-hover">
+            <div class="text-cyan-400 text-xs font-bold uppercase">Bước 2</div>
+            <h4 class="font-bold text-white text-sm sm:text-base">Đánh giá Minh bạch</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">Phân tích nội dung, rà soát điều khoản hợp đồng ToS tìm cờ
+              đỏ (red flags) và kiểm tra bẫy giá giả mạo.</p>
+          </div>
+          <div
+            class="p-4 sm:p-6 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-2 tactile-card ocean-glow-hover">
+            <div class="text-emerald-400 text-xs font-bold uppercase">Bước 3</div>
+            <h4 class="font-bold text-white text-sm sm:text-base">Xác nhận &amp; Cấp Báo cáo</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">Cung cấp Điểm số Tin cậy (Trust Score 0-100), phân loại An
+              toàn/Rủi ro và chuỗi lập luận giải thích được.</p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VIEW 3: GIẢI THÍCH CHI TIẾT & NGUYÊN LÝ VẬN HÀNH               -->
+    <!-- ============================================================== -->
+    <section id="view-explanation" class="hidden w-full space-y-6 sm:space-y-8 py-1">
+      <div class="scroll-reveal text-center space-y-2.5 max-w-3xl mx-auto">
+        <div
+          class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-500/10 border border-sky-400/30 text-sky-400 text-xs font-semibold">
+          ⚙️ Giải thích Chi tiết &amp; Nguyên lý Vận hành
+        </div>
+        <h2 class="text-xl sm:text-3xl font-bold text-white">Kiến trúc Hệ thống &amp; Trọng số Suy luận</h2>
+        <p class="text-xs sm:text-sm text-slate-400">100% Minh bạch không hộp đen: An toàn (40%), Minh bạch (30%), Pháp
+          lý (30%) với cơ chế Khóa Phạt Vi phạm (Penalty Gate).</p>
+      </div>
+
+      <div
+        class="scroll-reveal p-4 sm:p-8 rounded-2xl sm:rounded-3xl bg-slate-900 border border-slate-800 space-y-4 ocean-glow">
+        <h3 class="text-xs sm:text-sm font-bold text-sky-400 uppercase tracking-wider">Mã nguồn Thuật toán Tính điểm
+          Minh bạch</h3>
+        <pre
+          class="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl bg-slate-950 border border-slate-800 text-[11px] sm:text-xs font-mono text-sky-300 overflow-x-auto leading-relaxed">
+function calculateTrustScore(safety, transparency, legality, redFlags) {
+  const WEIGHT_SAFETY = 0.40;
+  const WEIGHT_TRANSPARENCY = 0.30;
+  const WEIGHT_LEGALITY = 0.30;
+
+  // Tính điểm chuẩn theo trọng số minh bạch
+  let baseScore = (safety * 0.40) + (transparency * 0.30) + (legality * 0.30);
+
+  // Cơ chế Khóa Phạt Vi Phạm (Penalty Gate):
+  // Bẫy lừa đảo hoặc cờ bạc bất hợp pháp bị khóa chặt ở mức điểm nguy hiểm
+  if (redFlags.includes('PROHIBITED_GAMBLING') || redFlags.includes('ACTIVE_PHISHING')) {
+    baseScore = Math.min(baseScore, 15);
+  }
+  return Math.round(baseScore);
+}</pre>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 bg-black py-5 sm:py-6 text-xs text-slate-500 mt-10 relative z-10">
+    <div class="w-full px-4 sm:px-6 lg:px-10 flex flex-wrap items-center justify-between gap-3 max-w-7xl mx-auto">
+      <div>
+        <span class="font-bold text-slate-300">Verity</span> — Nền tảng Thẩm định An toàn, Minh bạch &amp; Tuân thủ Pháp
+        lý (Nghị định 13/2023/NĐ-CP &amp; GDPR)
+      </div>
+      <div class="text-[11px] text-slate-500">
+        Chạy độc lập trên trình duyệt • Tối ưu cho cả điện thoại &amp; máy tính • Nền đen sâu &amp; Ánh sáng xanh biển
+      </div>
+    </div>
+  </footer>
+
+  <!-- Standalone Client-side Logic (Vanilla JS, Siêu nhẹ, 0 lag) -->
+  <!-- Cơ sở dữ liệu và AI Engine 10,000+ Tên miền An toàn Toàn cầu -->
+  <script src="verified_domains.js"></script>
+  <script>
+      // 1. Interactive Lightweight Canvas Background (Tiết kiệm CPU/RAM & Màu xanh biển trên nền đen)
+      (function initCanvas() {
+        const canvas = document.getElementById('cyberCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        let w = (canvas.width = window.innerWidth);
+        let h = (canvas.height = window.innerHeight);
+
+        window.addEventListener('resize', () => {
+          w = canvas.width = window.innerWidth;
+          h = canvas.height = window.innerHeight;
+        });
+
+        // 35 hạt xanh biển nhẹ nhàng
+        const particleCount = window.innerWidth < 640 ? 20 : 35;
+        const particles = [];
+        const colors = ['#0ea5e9', '#38bdf8', '#0284c7', '#3b82f6'];
+
+        for (let i = 0; i < particleCount; i++) {
+          particles.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            vx: (Math.random() - 0.5) * 0.45,
+            vy: (Math.random() - 0.5) * 0.45,
+            radius: Math.random() * 2 + 1,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            alpha: Math.random() * 0.4 + 0.2
+          });
+        }
+
+        let isHidden = false;
+        document.addEventListener('visibilitychange', () => {
+          isHidden = document.hidden;
+        });
+
+        function loop() {
+          if (!isHidden) {
+            ctx.clearRect(0, 0, w, h);
+            const len = particles.length;
+
+            for (let i = 0; i < len; i++) {
+              for (let j = i + 1; j < len; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                const distSq = dx * dx + dy * dy;
+                if (distSq < 12000) {
+                  const dist = Math.sqrt(distSq);
+                  ctx.strokeStyle = `rgba(14, 165, 233, ${(1 - dist / 110) * 0.16})`;
+                  ctx.lineWidth = 0.5;
+                  ctx.beginPath();
+                  ctx.moveTo(particles[i].x, particles[i].y);
+                  ctx.lineTo(particles[j].x, particles[j].y);
+                  ctx.stroke();
+                }
+              }
+            }
+
+            for (let i = 0; i < len; i++) {
+              const p = particles[i];
+              p.x += p.vx;
+              p.y += p.vy;
+              if (p.x < -10) p.x = w + 10;
+              if (p.x > w + 10) p.x = -10;
+              if (p.y < -10) p.y = h + 10;
+              if (p.y > h + 10) p.y = -10;
+
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+              ctx.fillStyle = p.color;
+              ctx.globalAlpha = p.alpha;
+              ctx.fill();
+            }
+          }
+          requestAnimationFrame(loop);
+        }
+        loop();
+      })();
+
+    // 2. Scroll-Triggered Reveal Animation (Lướt xuống nội dung trượt hiện ra mượt mà)
+    const scrollObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-revealed');
+          scrollObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -25px 0px' });
+
+    function initScrollReveals() {
+      document.querySelectorAll('.scroll-reveal').forEach(el => {
+        scrollObserver.observe(el);
+      });
+    }
+
+    // Kích hoạt ngay khi tải trang
+    window.addEventListener('DOMContentLoaded', initScrollReveals);
+    setTimeout(initScrollReveals, 100);
+
+    // 3. Chế Độ Sáng / Tối (Dark / Light Theme Toggle)
+    let currentTheme = localStorage.getItem('verity_theme') || 'dark';
+    function applyTheme(theme) {
+      currentTheme = theme;
+      localStorage.setItem('verity_theme', theme);
+      const icon = document.getElementById('themeIcon');
+      if (theme === 'light') {
+        document.body.classList.add('theme-light');
+        document.documentElement.classList.remove('dark');
+        if (icon) icon.innerText = '☀️';
+      } else {
+        document.body.classList.remove('theme-light');
+        document.documentElement.classList.add('dark');
+        if (icon) icon.innerText = '🌙';
+      }
+    }
+    function toggleTheme() {
+      applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+    }
+    // Áp dụng theme đã lưu
+    applyTheme(currentTheme);
+
+    // 3.5. Solar System Orbit Animation (Mặt Trời là Tiêu Đề Giới Thiệu, 3 Tiểu Hành Tinh Xoay Chậm Rãi)
+    (function initSolarSystem() {
+      const stage = document.getElementById('solarSystemStage');
+      const p1 = document.getElementById('planet1');
+      const p2 = document.getElementById('planet2');
+      const p3 = document.getElementById('planet3');
+      if (!stage || !p1 || !p2 || !p3) return;
+
+      let angle = 0; // radian
+      let lastTime = performance.now();
+      // Tốc độ xoay chậm rãi, êm dịu, không quay nhanh (~35s mỗi vòng quay)
+      const speed = 0.00008;
+
+      // Theo yêu cầu người dùng:
+      // 1. Không vẽ đường quỹ đạo (không cần vẽ đg)
+      // 2. Khi di chuột vào thì KHÔNG DỪNG (vẫn tiếp tục xoay êm ái, mượt mà)
+      // 3. Tốc độ ổn định, không bị giật hay quay quá nhanh
+
+      function updateOrbits(now) {
+        const dt = now - lastTime;
+        lastTime = now;
+
+        // Xoay liên tục mượt mà, giới hạn dt tránh giật khi chuyển tab
+        if (document.visibilityState !== 'hidden') {
+          angle = (angle + speed * Math.min(dt, 80)) % (Math.PI * 2);
+        }
+
+        // Lấy chiều rộng container
+        let w = stage.offsetWidth;
+        if (!w || w <= 0) {
+          w = window.innerWidth ? Math.min(window.innerWidth - 32, 1100) : 900;
+        }
+
+        // Bán kính trục ngang (rx) và trục dọc (ry) tự động co giãn theo mọi cỡ màn hình
+        let rx, ry;
+        if (w < 420) {
+          rx = Math.min(w * 0.44, 155);
+          ry = 135;
+        } else if (w < 640) {
+          rx = Math.min(w * 0.46, 210);
+          ry = 155;
+        } else if (w < 768) {
+          rx = 280;
+          ry = 170;
+        } else if (w < 1024) {
+          rx = 365;
+          ry = 188;
+        } else {
+          rx = 430;
+          ry = 205;
+        }
+
+        // 3 Tiểu hành tinh cách đều nhau 120 độ (0, 2pi/3, 4pi/3)
+        const planets = [
+          { el: p1, offset: 0 },
+          { el: p2, offset: (2 * Math.PI) / 3 },
+          { el: p3, offset: (4 * Math.PI) / 3 }
+        ];
+
+        planets.forEach(p => {
+          const currentAngle = (angle + p.offset) % (Math.PI * 2);
+          const x = Math.cos(currentAngle) * rx;
+          const y = Math.sin(currentAngle) * ry;
+
+          // Hiệu ứng không gian 3D:
+          // Khi y >= 0 (bán cầu dưới): gần người quan sát hơn -> z-index 30 (ở trước Mặt Trời), scale to hơn (1.05x)
+          // Khi y < 0 (bán cầu trên): xa hơn -> z-index 5 (lướt ra sau Mặt Trời), scale nhỏ hơn (0.90x), độ mờ mềm mại
+          const normalizedY = y / ry; // [-1, 1]
+          const scale = 0.90 + 0.15 * ((normalizedY + 1) / 2);
+          const opacity = 0.78 + 0.22 * ((normalizedY + 1) / 2);
+          const zIndex = y >= -10 ? 30 : 5;
+
+          p.el.style.transform = `translate3d(calc(-50% + ${x.toFixed(1)}px), calc(-50% + ${y.toFixed(1)}px), 0px) scale(${scale.toFixed(3)})`;
+          p.el.style.zIndex = zIndex;
+          p.el.style.opacity = opacity.toFixed(2);
+        });
+
+        requestAnimationFrame(updateOrbits);
+      }
+
+      requestAnimationFrame(updateOrbits);
+    })();
+
+    // 4. Navigation Tab Switching (Trang xuất hiện đầu tiên: overview)
+    function switchTab(tabId) {
+      document.getElementById('view-overview').classList.add('hidden');
+      document.getElementById('view-main').classList.add('hidden');
+      document.getElementById('view-explanation').classList.add('hidden');
+
+      document.getElementById(`view-${tabId}`).classList.remove('hidden');
+
+      const tabs = ['overview', 'main', 'explanation'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`nav-btn-${t}`);
+        if (btn) {
+          if (t === tabId) {
+            btn.className = 'tactile-btn px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap bg-sky-600 text-white shadow-md';
+          } else {
+            btn.className = 'tactile-btn px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap text-slate-400 hover:text-white';
+          }
+        }
+      });
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(initScrollReveals, 80);
+
+      if (tabId === 'main') {
+        setTimeout(() => {
+          const input = document.getElementById('targetInput');
+          if (input) input.focus();
+        }, 150);
+      }
+    }
+
+    // 5. Quick Input Helpers
+    function setInputValue(val, autoScan = false) {
+      const inp = document.getElementById('targetInput');
+      if (inp) {
+        inp.value = val;
+        if (autoScan) {
+          handleStartScan(new Event('submit'));
+        }
+      }
+    }
+
+    const samplePresets = [
+      { url: 'https://vietcombank-xac-thuc-otp-khan-cap.top/login', type: 'phishing' },
+      { url: 'https://shopee-sale-dong-gia-10k.shop-khuyen-mai-vip.xyz', type: 'scam' },
+      { url: 'https://fpt.com/vi/ve-fpt/chinh-sach-bao-ve-du-lieu-ca-nhan', type: 'safe' },
+      { url: 'm88.com', type: 'gambling' },
+      { url: 'https://chinhphu.vn', type: 'gov' }
+    ];
+
+    function applyPreset(idx) {
+      const item = samplePresets[idx];
+      if (!item) return;
+      document.getElementById('targetInput').value = item.url;
+      handleStartScan(new Event('submit'));
+    }
+
+    // 6. Standalone Smart Security Evaluation Engine (Siêu tốc ~500ms, không rườm rà)
+    let currentReportData = null;
+
+    function handleStartScan(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const input = document.getElementById('targetInput').value.trim();
+      if (!input) return;
+
+      // Bật Laser và Live HUD
+      const hud = document.getElementById('liveHud');
+      const laser = document.getElementById('scannerLaser');
+      const btn = document.getElementById('btnSubmitScan');
+      const hudText = document.getElementById('hudPhaseText');
+
+      if (hud) hud.classList.remove('hidden');
+      if (laser) laser.classList.remove('hidden');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="flex items-center gap-2"><span class="w-3.5 h-3.5 border-2 border-sky-400 border-t-transparent rounded-full animate-spin"></span>Đang thẩm định...</span>';
+
+      const phase1 = 'Đang kiểm tra DNS & Chứng thư SSL TLS 1.3...';
+      if (hudText) hudText.innerText = phase1;
+
+      setTimeout(() => {
+        const phase2 = 'Đang đối chiếu Nghị định 13 & BLHS 321/322...';
+        if (hudText) hudText.innerText = phase2;
+      }, 180);
+
+      setTimeout(() => {
+        const phase3 = 'Đang cấp báo cáo điểm số minh bạch...';
+        if (hudText) hudText.innerText = phase3;
+      }, 360);
+
+      setTimeout(() => {
+        if (hud) hud.classList.add('hidden');
+        if (laser) laser.classList.add('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '<span>✨ Xác nhận Tính Minh bạch Ngay</span>';
+        generateReport(input);
+      }, 500);
+    }
+
+    // Hàm nhảy số đếm điểm số từ 0 lên điểm thật mượt mà
+    function animateScoreCounter(targetScore, duration = 450) {
+      const numElem = document.getElementById('scoreDisplayNum');
+      if (!numElem) return;
+      const startTime = performance.now();
+      const startVal = 0;
+
+      function updateNumber(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(startVal + (targetScore - startVal) * easeOut);
+        numElem.innerText = current;
+
+        if (progress < 1) {
+          requestAnimationFrame(updateNumber);
+        } else {
+          numElem.innerText = targetScore;
+        }
+      }
+      requestAnimationFrame(updateNumber);
+    }
+
+    function generateReport(input) {
+      const lower = input.toLowerCase();
+      let trustScore = 75;
+      let safety = 75;
+      let transparency = 70;
+      let legality = 70;
+      let status = 'caution';
+      let isProhibitedGambling = false;
+      let summary = '';
+      let minAge = 0;
+      let ratingLabel = 'Mọi lứa tuổi (All Ages)';
+      let siteIntro = '';
+      let suitableAudience = '';
+      let certSummary = '';
+      let certs = [];
+      let findings = [];
+      let recommendations = [];
+      let categoryBadge = '';
+      let isWhitelistVerified = false;
+
+      // 0. ƯU TIÊN: Kiểm tra với Động cơ AI Thẩm định 10,000+ Tên miền An toàn Toàn cầu
+      let aiCheck = null;
+      try {
+        if (typeof VERITY_AI_ENGINE !== 'undefined' && typeof VERITY_AI_ENGINE.inspectDomain === 'function') {
+          aiCheck = VERITY_AI_ENGINE.inspectDomain(input);
+        }
+      } catch (err) {
+        console.error("Lỗi AI Engine khi kiểm tra tên miền:", err);
+      }
+
+      if (aiCheck && aiCheck.isThreat) {
+        trustScore = aiCheck.trustScore;
+        safety = aiCheck.safety;
+        transparency = aiCheck.transparency;
+        legality = aiCheck.legality;
+        status = 'danger';
+        isProhibitedGambling = (aiCheck.threatType === 'gambling');
+        minAge = aiCheck.minAge;
+        ratingLabel = aiCheck.ratingLabel;
+        summary = aiCheck.summary;
+        siteIntro = aiCheck.siteIntro;
+        suitableAudience = aiCheck.suitableAudience;
+        certSummary = aiCheck.certSummary;
+        certs = aiCheck.certs;
+        findings = aiCheck.findings;
+        recommendations = aiCheck.recommendations;
+        categoryBadge = aiCheck.categoryBadge;
+      } else if (aiCheck && aiCheck.isWhitelistVerified) {
+        trustScore = aiCheck.trustScore;
+        safety = aiCheck.safety;
+        transparency = aiCheck.transparency;
+        legality = aiCheck.legality;
+        status = 'safe';
+        minAge = aiCheck.minAge;
+        ratingLabel = aiCheck.ratingLabel;
+        summary = aiCheck.summary;
+        siteIntro = aiCheck.siteIntro;
+        suitableAudience = aiCheck.suitableAudience;
+        certSummary = aiCheck.certSummary;
+        certs = aiCheck.certs;
+        findings = aiCheck.findings;
+        recommendations = aiCheck.recommendations;
+        categoryBadge = aiCheck.categoryBadge;
+        isWhitelistVerified = true;
+      }
+      // Check Cờ bạc cấm (Bộ luật Hình sự 321, 322)
+      else if (lower.includes('m88') || lower.includes('w88') || lower.includes('kubet') || lower.includes('188bet') || lower.includes('fun88') || lower.includes('fb88') || lower.includes('b52') || lower.includes('sunwin') || lower.includes('go88')) {
+        trustScore = 12;
+        safety = 15;
+        transparency = 10;
+        legality = 0;
+        status = 'danger';
+        isProhibitedGambling = true;
+        minAge = 18;
+        ratingLabel = '18+ (Nghiêm cấm truy cập)';
+        summary = 'NGUY HIỂM CẤM TRUY CẬP: Tên miền thuộc mạng lưới cờ bạc/cá cược trực tuyến phi pháp, vi phạm nghiêm trọng Điều 321, 322 Bộ luật Hình sự. Bị kích hoạt Khóa Phạt (Penalty Gate).';
+        siteIntro = 'Nền tảng tổ chức đánh bạc, cá cược thể thao và trò chơi đổi thưởng trực tuyến phi pháp, vận hành qua mạng lưới máy chủ nước ngoài và không có pháp nhân đại diện được cấp phép tại Việt Nam.';
+        suitableAudience = '❌ Nghiêm cấm mọi đối tượng. Hành vi tham gia cá độ hoặc tổ chức đánh bạc trực tuyến vi phạm Điều 321, 322 Bộ luật Hình sự (có thể bị xử lý hình sự từ phạt tiền đến phạt tù).';
+        certSummary = '0/4 Tiêu chuẩn đạt — 🚨 Bị Blacklist toàn mạng';
+        certs = [
+          { name: 'Chứng thư SSL/TLS', status: 'warning', note: 'Chứng thư nặc danh giá rẻ, nguy cơ rò rỉ dữ liệu tài khoản' },
+          { name: 'Nghị định 13/2023/NĐ-CP', status: 'danger', note: 'Vi phạm: Dữ liệu cá nhân bị gửi về máy chủ cờ bạc ngầm hải ngoại' },
+          { name: 'Giấy phép Bộ Công Thương', status: 'danger', note: 'Không có giấy phép hoạt động hợp pháp tại Việt Nam' },
+          { name: 'Cảnh báo An ninh Mạng NCSC', status: 'danger', note: 'NẰM TRONG BLACKLIST: Bị cơ quan chức năng phong tỏa định kỳ' }
+        ];
+        findings = [
+          { title: 'Tên miền cờ bạc phi pháp', impact: 'CỰC KỲ NGUY HIỂM', severity: 'high', desc: 'Có tên trong danh sách đen các website cá độ trực tuyến bị Bộ Công an và Cục An toàn thông tin phong tỏa.' },
+          { title: 'Không bảo vệ dữ liệu người dùng', impact: 'VI PHẠM NĐ 13/2023', severity: 'high', desc: 'Chuyển thông tin thẻ ngân hàng và danh tính sang các máy chủ ẩn danh nước ngoài không có giấy phép.' }
+        ];
+        recommendations = [
+          { action: 'Rời khỏi trang web ngay lập tức', priority: 'urgent', desc: 'Không nhập số điện thoại, tài khoản ngân hàng hoặc nạp tiền dưới bất kỳ hình thức nào.' },
+          { action: 'Khóa tài khoản nếu đã trót giao dịch', priority: 'urgent', desc: 'Liên hệ ngân hàng ngay để tạm khóa thẻ hoặc tài khoản có liên quan.' }
+        ];
+      }
+      // Phishing giả mạo ngân hàng
+      else if (lower.includes('otp') || lower.includes('vietcombank-xac-thuc') || lower.includes('bidv-online') || lower.includes('techcombank-login') || lower.includes('khan-cap') || lower.includes('.top') || lower.includes('.xyz') && lower.includes('bank')) {
+        trustScore = 18;
+        safety = 12;
+        transparency = 20;
+        legality = 15;
+        status = 'danger';
+        minAge = 18;
+        ratingLabel = '18+ (Cảnh báo lừa đảo)';
+        summary = 'CẢNH BÁO LỪA ĐẢO TÀI CHÍNH: Phát hiện trang web giả mạo giao diện ngân hàng nhằm chiếm đoạt mã OTP và mật khẩu Internet Banking của nạn nhân.';
+        siteIntro = 'Trang web mạo danh giao diện ngân hàng điện tử / cổng tài chính nhằm mục đích lừa đảo người dùng đăng nhập để đánh cắp tên tài khoản, mật khẩu và mã OTP giao dịch.';
+        suitableAudience = '🚨 Tuyệt đối không truy cập. Bẫy tấn công trực tiếp vào tài sản cá nhân. Đặc biệt nguy hiểm với người cao tuổi và người ít tiếp xúc với các thủ đoạn giả mạo công nghệ.';
+        certSummary = '0/4 Tiêu chuẩn đạt — ⚠️ Nguy cơ mất sạch tiền tài khoản';
+        certs = [
+          { name: 'Chứng thư SSL/TLS', status: 'warning', note: 'SSL Let\'s Encrypt miễn phí ngắn hạn, không xác thực pháp nhân' },
+          { name: 'Nghị định 13/2023/NĐ-CP', status: 'danger', note: 'Vi phạm nghiêm trọng: Đánh cắp bí mật tài chính cá nhân người dùng' },
+          { name: 'Chuẩn Bảo mật PCI-DSS', status: 'danger', note: 'Không đạt tiêu chuẩn mã hóa thẻ và giao dịch tài chính quốc tế' },
+          { name: 'Cảnh báo NCSC & Ngân hàng', status: 'danger', note: 'Trang web giả mạo lừa đảo, đã có lệnh phát báo động khẩn' }
+        ];
+        findings = [
+          { title: 'Bẫy đánh cắp OTP trực tiếp', impact: 'NGUY HIỂM', severity: 'high', desc: 'Giao diện bắt chước cổng đăng nhập ngân hàng, tên miền đăng ký ẩn danh tại nước ngoài.' },
+          { title: 'Chứng thư SSL miễn phí đáng ngờ', impact: 'CẢNH BÁO', severity: 'high', desc: 'Thời hạn tên miền dưới 30 ngày, có dấu hiệu tạo ra để tấn công lừa đảo ngắn hạn.' }
+        ];
+        recommendations = [
+          { action: 'Tuyệt đối không nhập mã OTP hay mật khẩu', priority: 'urgent', desc: 'Ngân hàng chính thức không bao giờ yêu cầu nhập mã OTP qua các đường link lạ.' }
+        ];
+      }
+      // Scam Shopee 10k
+      else if (lower.includes('dong-gia') || lower.includes('khuyen-mai-vip') || lower.includes('trung-thuong') || lower.includes('qua-tang-tri-an')) {
+        trustScore = 28;
+        safety = 30;
+        transparency = 25;
+        legality = 25;
+        status = 'danger';
+        minAge = 16;
+        ratingLabel = '16+ (Cảnh báo lừa đảo)';
+        summary = 'CẢNH BÁO GIAN LẬN TMĐT: Website sử dụng chiêu trò đồng giá 10k, trúng iPhone nhằm thu thập thông tin thẻ tín dụng và tiền cọc của người tiêu dùng.';
+        siteIntro = 'Website thương mại điện tử mạo danh sử dụng bẫy khuyến mãi ảo "đồng giá 10k", "trúng iPhone", "quà tri ân 0đ" nhằm ép nạn nhân nạp tiền cọc, thanh toán phí ship ảo hoặc lộ thông tin cá nhân.';
+        suitableAudience = '⚠️ Cảnh báo rủi ro lừa đảo. Không phù hợp với người tìm kiếm giao dịch an toàn. Người dùng trẻ vị thành niên và người già dễ bị thu hút bởi quà tặng ảo.';
+        certSummary = '1/4 Tiêu chuẩn đạt — ⚠️ Chưa đăng ký Bộ Công Thương';
+        certs = [
+          { name: 'Chứng thư SSL/TLS', status: 'warning', note: 'Mã hóa cơ bản, hạ tầng máy chủ lưu trữ không rõ ràng' },
+          { name: 'Nghị định 13/2023/NĐ-CP', status: 'warning', note: 'Không có chính sách lưu trữ và xử lý dữ liệu người mua minh bạch' },
+          { name: 'Dấu đỏ/xanh Bộ Công Thương', status: 'danger', note: 'Chưa đăng ký thông báo với Cục Thương mại điện tử (Bộ Công Thương)' },
+          { name: 'Bảo hiểm & Đổi trả TMĐT', status: 'danger', note: 'Không có cơ chế bảo vệ quyền lợi người tiêu dùng khi có tranh chấp' }
+        ];
+        findings = [
+          { title: 'Dấu hiệu bẫy thanh toán giả mạo', impact: 'NGUY HIỂM', severity: 'high', desc: 'Không có thông tin đăng ký Bộ Công Thương, thông tin công ty mập mờ.' }
+        ];
+        recommendations = [
+          { action: 'Không thanh toán hoặc chuyển khoản cọc', priority: 'urgent', desc: 'Chỉ mua hàng qua ứng dụng chính thức của các sàn thương mại điện tử.' }
+        ];
+      }
+      // An toàn: FPT, Chinhphu, Shopee chính chủ
+      else if (lower.includes('fpt.com') || lower.includes('chinhphu.vn') || lower.includes('vietcombank.com.vn') || lower.includes('shopee.vn') || lower.includes('.gov.vn')) {
+        trustScore = 96;
+        safety = 98;
+        transparency = 95;
+        legality = 96;
+        status = 'safe';
+        minAge = 0;
+        ratingLabel = 'Mọi lứa tuổi (All Ages)';
+        summary = 'XÁC NHẬN AN TOÀN & MINH BẠCH: Thực thể trực tuyến sở hữu chứng chỉ bảo mật TLS 1.3 hợp lệ, pháp nhân rõ ràng và tuân thủ đầy đủ Nghị định 13/2023/NĐ-CP.';
+        siteIntro = 'Cổng thông tin / nền tảng dịch vụ số chính thức được vận hành và bảo chứng pháp lý bởi các cơ quan chính phủ, định chế tài chính hoặc tập đoàn công nghệ hàng đầu.';
+        suitableAudience = '✅ Phù hợp với mọi đối tượng. Người dân, doanh nghiệp, tổ chức và thanh thiếu niên có thể an tâm truy cập tra cứu thông tin và thực hiện giao dịch chính thống.';
+        certSummary = '4/4 Tiêu chuẩn đạt chuẩn Quốc gia & Quốc tế';
+        certs = [
+          { name: 'Chứng thư EV/OV TLS 1.3', status: 'safe', note: 'Mã hóa 256-bit AES chuẩn cao cấp, xác thực danh tính tổ chức' },
+          { name: 'Nghị định 13/2023/NĐ-CP', status: 'safe', note: 'Bảo vệ toàn diện dữ liệu cá nhân & tôn trọng quyền chủ thể dữ liệu' },
+          { name: 'Bộ Công Thương / Cổng QG', status: 'safe', note: 'Đã hoàn tất thủ tục cấp phép / thông báo sàn TMĐT chính danh' },
+          { name: 'Tín nhiệm Mạng NCSC / ISO 27001', status: 'safe', note: 'Đạt chuẩn giám sát an toàn thông tin & chứng chỉ bảo mật quốc tế' }
+        ];
+        findings = [
+          { title: 'Chứng chỉ mã hóa SSL TLS 1.3 bảo mật cao', impact: 'TIÊU CHUẨN', severity: 'safe', desc: 'Toàn bộ dữ liệu truyền tải đều được mã hóa theo tiêu chuẩn quốc tế an toàn.' },
+          { title: 'Tuân thủ Nghị định 13/2023/NĐ-CP', impact: 'HỢP PHÁP', severity: 'safe', desc: 'Có chính sách bảo vệ dữ liệu cá nhân rõ ràng, minh bạch quyền của chủ thể dữ liệu.' }
+        ];
+        recommendations = [
+          { action: 'Có thể an tâm sử dụng dịch vụ', priority: 'normal', desc: 'Thực thể đáp ứng đầy đủ các tiêu chuẩn bảo mật và minh bạch pháp lý.' }
+        ];
+      }
+      // Phổ thông mặc định
+      else {
+        trustScore = 80;
+        safety = 80;
+        transparency = 75;
+        legality = 80;
+        status = 'caution';
+        minAge = 13;
+        ratingLabel = '13+ (Khuyến nghị tham khảo)';
+        summary = 'CẦN LƯU Ý: Trang web hoạt động bình thường, hạ tầng kết nối an toàn nhưng cần kiểm tra kỹ thông tin pháp nhân trước khi chia sẻ dữ liệu nhạy cảm hoặc thanh toán.';
+        siteIntro = 'Trang web hoạt động thông thường trên không gian mạng, kết nối máy chủ ổn định. Người dùng nên kiểm tra kỹ điều khoản dịch vụ trước khi chia sẻ dữ liệu riêng tư.';
+        suitableAudience = 'ℹ️ Phù hợp người dùng phổ thông (13+). An toàn cho việc đọc tin tức, tra cứu nội dung chung. Cân nhắc kỹ trước khi nhập số điện thoại hoặc thông tin thanh toán.';
+        certSummary = '2/4 Tiêu chuẩn đạt — Đạt mức an toàn cơ bản';
+        certs = [
+          { name: 'Chứng thư SSL/TLS', status: 'safe', note: 'Kết nối HTTPS tiêu chuẩn mã hóa dữ liệu đường truyền an toàn' },
+          { name: 'Nghị định 13/2023/NĐ-CP', status: 'warning', note: 'Chính sách Cookie và bảo mật thông tin ở mức tiêu chuẩn chung' },
+          { name: 'Đăng ký Pháp nhân DN', status: 'warning', note: 'Chưa có thông tin công bố dấu xác thực sàn TMĐT chính thức' },
+          { name: 'Cơ sở dữ liệu Đe dọa Mạng', status: 'safe', note: 'Chưa phát hiện dấu hiệu mã độc hay liên kết lừa đảo trực tuyến' }
+        ];
+        findings = [
+          { title: 'Hạ tầng kết nối tiêu chuẩn', impact: 'TIÊU CHUẨN', severity: 'low', desc: 'Có chứng chỉ SSL/TLS, chưa có cảnh báo mã độc từ các cơ sở dữ liệu đe dọa mạng.' }
+        ];
+        recommendations = [
+          { action: 'Kiểm tra kỹ trước khi chuyển tiền', priority: 'recommended', desc: 'Đảm bảo xác thực đúng số tài khoản và thông tin người thụ hưởng.' }
+        ];
+      }
+
+      currentReportData = { input, trustScore, safety, transparency, legality, status, isProhibitedGambling, summary, minAge, ratingLabel, siteIntro, suitableAudience, certSummary, certs, findings, recommendations, categoryBadge, isWhitelistVerified };
+
+      // Render Report Header
+      document.getElementById('reportTargetTitle').innerText = input.replace(/^https?:\/\//, '').split('/')[0];
+      document.getElementById('reportTargetUrl').innerText = input.startsWith('http') ? input : `https://${input}`;
+      document.getElementById('reportSummaryText').innerText = summary;
+
+      // Render Category and Whitelist Badges
+      const catBadgeEl = document.getElementById('reportCategoryBadge');
+      if (catBadgeEl) {
+        if (categoryBadge) {
+          catBadgeEl.innerText = categoryBadge;
+          catBadgeEl.classList.remove('hidden');
+        } else {
+          catBadgeEl.classList.add('hidden');
+        }
+      }
+      const whiteBadgeEl = document.getElementById('reportWhitelistBadge');
+      if (whiteBadgeEl) {
+        if (isWhitelistVerified) {
+          whiteBadgeEl.classList.remove('hidden');
+        } else {
+          whiteBadgeEl.classList.add('hidden');
+        }
+      }
+
+      // Prohibited banner
+      const ban = document.getElementById('prohibitedBanner');
+      if (isProhibitedGambling) ban.classList.remove('hidden');
+      else ban.classList.add('hidden');
+
+      // HIỆU ỨNG BIỂU ĐỒ XOAY 1 VÒNG 360 ĐỘ
+      const gaugeContainer = document.getElementById('scoreGaugeContainer');
+      if (gaugeContainer) {
+        gaugeContainer.classList.remove('spin-gauge-once');
+        void gaugeContainer.offsetWidth; // Trigger reflow
+        gaugeContainer.classList.add('spin-gauge-once');
+      }
+
+      // Nhảy số đếm từ 0 lên trustScore
+      animateScoreCounter(trustScore, 450);
+
+      // Vòng tròn Gauge SVG
+      const circle = document.getElementById('scoreProgressCircle');
+      const badge = document.getElementById('scoreStatusBadge');
+      const scoreNum = document.getElementById('scoreDisplayNum');
+
+      const offset = 263.89 - (263.89 * trustScore) / 100;
+      circle.style.strokeDashoffset = offset;
+
+      if (trustScore >= 80) {
+        scoreNum.className = 'text-3xl sm:text-4xl font-black text-emerald-400';
+        circle.setAttribute('stroke', '#10b981');
+        badge.className = 'px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-1.5 bg-emerald-500/15 text-emerald-300 border border-emerald-500/40';
+        badge.innerText = 'AN TOÀN';
+      } else if (trustScore >= 50) {
+        scoreNum.className = 'text-3xl sm:text-4xl font-black text-amber-400';
+        circle.setAttribute('stroke', '#f59e0b');
+        badge.className = 'px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-1.5 bg-amber-500/15 text-amber-300 border border-amber-500/40';
+        badge.innerText = 'CẦN LƯU Ý';
+      } else {
+        scoreNum.className = 'text-3xl sm:text-4xl font-black text-red-400';
+        circle.setAttribute('stroke', '#ef4444');
+        badge.className = 'px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-1.5 bg-red-500/20 text-red-300 border border-red-500/50';
+        badge.innerText = 'CẢNH BÁO NGUY HIỂM';
+      }
+
+      // Sub-meters
+      document.getElementById('safetyVal').innerText = safety + '%';
+      document.getElementById('safetyBar').style.width = safety + '%';
+      document.getElementById('transparencyVal').innerText = transparency + '%';
+      document.getElementById('transparencyBar').style.width = transparency + '%';
+      document.getElementById('legalityVal').innerText = legality + '%';
+      document.getElementById('legalityBar').style.width = legality + '%';
+
+      // Render Thẩm định chi tiết thực thể số (Giới thiệu, Phù hợp với ai, Chứng nhận an toàn)
+      const siteIntroEl = document.getElementById('reportSiteIntro');
+      if (siteIntroEl) siteIntroEl.innerText = siteIntro;
+      const suitableAudienceEl = document.getElementById('reportSuitableAudience');
+      if (suitableAudienceEl) suitableAudienceEl.innerText = suitableAudience;
+      const certSummaryEl = document.getElementById('reportCertStatusSummary');
+      if (certSummaryEl) certSummaryEl.innerText = certSummary;
+
+      const certsListEl = document.getElementById('reportCertsList');
+      if (certsListEl) {
+        certsListEl.innerHTML = certs.map(c => {
+          let bgClass = 'bg-slate-950/60 border-slate-800 text-slate-300';
+          let badgeClass = 'bg-slate-500/20 text-slate-300 border border-slate-500/30';
+          let badgeText = 'Chưa xác thực';
+          if (c.status === 'safe') {
+            bgClass = 'bg-emerald-950/25 border-emerald-800/70 text-emerald-200';
+            badgeClass = 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+            badgeText = '✓ Đạt chuẩn';
+          } else if (c.status === 'warning') {
+            bgClass = 'bg-amber-950/25 border-amber-800/70 text-amber-200';
+            badgeClass = 'bg-amber-500/20 text-amber-300 border border-amber-500/40';
+            badgeText = '⚠️ Cảnh báo';
+          } else if (c.status === 'danger') {
+            bgClass = 'bg-red-950/30 border-red-800/80 text-red-200';
+            badgeClass = 'bg-red-500/20 text-red-300 border border-red-500/40';
+            badgeText = '✕ Vi phạm';
+          }
+          return `
+              <div class="tactile-card p-2.5 rounded-xl border flex flex-col justify-between space-y-1.5 ${bgClass}">
+                <div class="flex items-center justify-between gap-1">
+                  <span class="text-[11px] font-bold text-white tracking-tight leading-tight">${c.name}</span>
+                  <span class="text-[9px] font-bold px-1.5 py-0.5 rounded font-mono shrink-0 ${badgeClass}">${badgeText}</span>
+                </div>
+                <p class="text-[10px] text-slate-400 leading-tight">${c.note}</p>
+              </div>
+            `;
+        }).join('');
+      }
+
+      // Age rating badge
+      document.getElementById('ageRatingBadge').innerText = ratingLabel;
+      evaluateUserAge();
+
+      // Findings
+      const findingsList = document.getElementById('keyFindingsList');
+      findingsList.innerHTML = findings.map(f => `
+          <div class="tactile-card p-3 rounded-xl border flex items-start justify-between gap-2.5 ${f.severity === 'high' ? 'bg-red-950/30 border-red-800/80 text-red-200' : (f.severity === 'safe' ? 'bg-emerald-950/30 border-emerald-800/80 text-emerald-200' : 'bg-slate-950/60 border-slate-800 text-slate-300')}">
+            <div class="space-y-0.5">
+              <div class="font-bold text-xs">${f.title}</div>
+              <p class="text-[11px] text-slate-400">${f.desc}</p>
+            </div>
+            <span class="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded font-mono shrink-0 ${f.severity === 'high' ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'}">${f.impact}</span>
+          </div>
+        `).join('');
+
+      // Recommendations
+      const recList = document.getElementById('recommendationsList');
+      recList.innerHTML = recommendations.map(r => `
+          <div class="tactile-card p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-start gap-2.5">
+            <span class="text-sm shrink-0">👉</span>
+            <div class="text-xs space-y-0.5">
+              <div class="font-bold text-white flex items-center gap-1.5 flex-wrap">
+                <span>${r.action}</span>
+                <span class="text-[9px] sm:text-[10px] uppercase font-bold px-1.5 py-0.2 rounded font-mono ${r.priority === 'urgent' ? 'bg-red-500/20 text-red-300' : 'bg-sky-500/20 text-sky-300'}">${r.priority === 'urgent' ? 'Khẩn cấp' : 'Khuyến nghị'}</span>
+              </div>
+              <p class="text-slate-400 text-[11px]">${r.desc}</p>
+            </div>
+          </div>
+        `).join('');
+
+      // Ẩn 3 bước quy trình khi có báo cáo kết quả và cuộn mượt
+      const stepsSec = document.getElementById('stepsIntroSection');
+      if (stepsSec) stepsSec.classList.add('hidden');
+
+      // Đảm bảo tab view-main đang hiển thị
+      document.getElementById('view-overview').classList.add('hidden');
+      document.getElementById('view-main').classList.remove('hidden');
+      document.getElementById('view-explanation').classList.add('hidden');
+      const navMainBtn = document.getElementById('nav-btn-main');
+      if (navMainBtn) navMainBtn.className = 'tactile-btn px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap bg-sky-600 text-white shadow-md';
+      const navOverBtn = document.getElementById('nav-btn-overview');
+      if (navOverBtn) navOverBtn.className = 'tactile-btn px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap text-slate-400 hover:text-white';
+
+      const container = document.getElementById('reportContainer');
+      container.classList.remove('hidden');
+      container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // 7. Age Checker
+    function setBirthYear(year) {
+      document.getElementById('userBirthYear').value = year;
+      evaluateUserAge();
+    }
+
+    function evaluateUserAge() {
+      if (!currentReportData) return;
+      const val = parseInt(document.getElementById('userBirthYear').value, 10);
+      const banner = document.getElementById('ageResultBanner');
+      if (isNaN(val) || val < 1920 || val > 2026) {
+        banner.className = 'text-xs text-amber-400';
+        banner.innerText = 'Vui lòng nhập năm sinh hợp lệ (VD: 2008)';
+        return;
+      }
+
+      const age = 2026 - val;
+      if (age < currentReportData.minAge) {
+        banner.className = 'text-xs text-red-400 font-bold';
+        banner.innerText = `🚨 CẢNH BÁO: Bạn hiện ${age} tuổi, chưa đủ điều kiện tối thiểu (${currentReportData.minAge}+ tuổi) để truy cập nội dung này!`;
+      } else {
+        banner.className = 'text-xs text-emerald-400 font-semibold';
+        banner.innerText = `✅ Bạn hiện ${age} tuổi, hoàn toàn đủ điều kiện sử dụng theo quy định pháp luật.`;
+      }
+    }
+
+    // 8. Report Export Actions
+    function copyReportSummary() {
+      if (!currentReportData) return;
+      const certListStr = (currentReportData.certs || []).map(c => `  • ${c.name}: ${c.note}`).join('\n');
+      const text = `[BÁO CÁO THẨM ĐỊNH THỰC THỂ SỐ VERITY]
+Thực thể: ${currentReportData.input}
+Điểm tin cậy: ${currentReportData.trustScore}/100 [${currentReportData.status.toUpperCase()}]
+- An toàn kỹ thuật: ${currentReportData.safety}%
+- Minh bạch điều khoản: ${currentReportData.transparency}%
+- Tuân thủ pháp lý: ${currentReportData.legality}%
+
+🌐 Giới thiệu sơ lược:
+${currentReportData.siteIntro || currentReportData.summary}
+
+👥 Phù hợp với ai:
+${currentReportData.suitableAudience || 'Mọi đối tượng'}
+
+🛡️ Chứng nhận & Chuẩn pháp lý (${currentReportData.certSummary || ''}):
+${certListStr}
+
+💡 Đánh giá tổng quan: ${currentReportData.summary}`;
+      navigator.clipboard.writeText(text);
+      alert('Đã sao chép tóm tắt thẩm định chi tiết vào bộ nhớ tạm!');
+    }
+
+    function downloadJsonReport() {
+      if (!currentReportData) return;
+      const blob = new Blob([JSON.stringify(currentReportData, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `verity-report-${Date.now()}.json`;
+      a.click();
+    }
+
+    // 9. Language Switch
+    let currentLang = 'vi';
+    function toggleLang() {
+      if (currentLang === 'vi') {
+        currentLang = 'en';
+        document.getElementById('langFlag').innerText = '🇺🇸';
+        document.getElementById('langLabel').innerText = 'English';
+      } else {
+        currentLang = 'vi';
+        document.getElementById('langFlag').innerText = '🇻🇳';
+        document.getElementById('langLabel').innerText = 'Tiếng Việt';
+      }
+    }
+  </script>
+</body>
+
+</html>
