@@ -31,19 +31,19 @@ chrome.runtime.onInstalled.addListener(() => {
   // Context menus on right-click
   chrome.contextMenus.create({
     id: "verity-scan-link",
-    title: isEn ? "🛡️ Scan Link with Verity" : "🛡️ Quét liên kết với Verity",
+    title: ${isEn ? '"🛡️ Scan Link with Verity"' : '"🛡️ Quét liên kết với Verity"'},
     contexts: ["link"]
   });
 
   chrome.contextMenus.create({
     id: "verity-scan-page",
-    title: isEn ? "🔍 Scan Current Page with Verity" : "🔍 Quét trang web hiện tại với Verity",
+    title: ${isEn ? '"🔍 Scan Current Page with Verity"' : '"🔍 Quét trang web hiện tại với Verity"'},
     contexts: ["page"]
   });
 
   chrome.contextMenus.create({
     id: "verity-scan-selection",
-    title: isEn ? "⚖️ Audit Text / Terms with Verity" : "⚖️ Thẩm định văn bản/điều khoản với Verity",
+    title: ${isEn ? '"⚖️ Audit Text / Terms with Verity"' : '"⚖️ Thẩm định văn bản/điều khoản với Verity"'},
     contexts: ["selection"]
   });
 });

@@ -4,14 +4,21 @@ import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'node:fs';
+import net from 'node:net';
 import dns from 'node:dns/promises';
 import tls from 'node:tls';
 import crypto from 'node:crypto';
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Explicitly load .env.local first (if present), then load default .env
+const envLocalPath = path.resolve(__dirname, '.env.local');
+if (fs.existsSync(envLocalPath)) {
+  dotenv.config({ path: envLocalPath });
+}
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
@@ -93,6 +100,15 @@ function putInCache(fingerprint: string, data: any) {
 // GLOBAL REAL-TIME MULTILINGUAL TRANSLATION ENGINE & CACHE
 // ============================================================================
 const TRANSLATION_CACHE = new Map<string, string>();
+const MAX_TRANSLATION_CACHE_ENTRIES = 5000;
+
+function putInTranslationCache(key: string, val: string) {
+  if (TRANSLATION_CACHE.size >= MAX_TRANSLATION_CACHE_ENTRIES) {
+    const oldest = TRANSLATION_CACHE.keys().next().value;
+    if (oldest) TRANSLATION_CACHE.delete(oldest);
+  }
+  TRANSLATION_CACHE.set(key, val);
+}
 
 async function translateDynamicObject(obj: any, targetLang: string): Promise<any> {
   if (!obj || !targetLang) {
@@ -147,7 +163,7 @@ ${serialized}`;
 
     const resText = aiResponse.text || '{}';
     const parsed = JSON.parse(resText.replace(/```json\n?|```/g, '').trim());
-    TRANSLATION_CACHE.set(cacheKey, JSON.stringify(parsed));
+    putInTranslationCache(cacheKey, JSON.stringify(parsed));
     return parsed;
   } catch (err) {
     console.warn('Dynamic report translation fallback error:', err);
@@ -169,22 +185,171 @@ interface ProbeResult {
 
 const PROBE_CACHE = new Map<string, ProbeResult>();
 const PROBE_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const MAX_PROBE_CACHE_ENTRIES = 2000;
+
+function isPrivateOrDisallowedIP(ip: string): boolean {
+  if (!ip) return true;
+
+  let normalized = ip.toLowerCase().trim().replace(/^\[|\]$/g, '');
+
+  // Handle IPv4-mapped IPv6 addresses (e.g. ::ffff:127.0.0.1 or ::ffff:7f00:1)
+  if (normalized.startsWith('::ffff:')) {
+    const after = normalized.slice(7);
+    if (after.includes('.')) {
+      normalized = after;
+    } else if (after.includes(':')) {
+      const parts = after.split(':');
+      if (parts.length === 2) {
+        const h1 = parseInt(parts[0], 16);
+        const h2 = parseInt(parts[1], 16);
+        if (!isNaN(h1) && !isNaN(h2)) {
+          normalized = `${(h1 >> 8) & 0xff}.${h1 & 0xff}.${(h2 >> 8) & 0xff}.${h2 & 0xff}`;
+        }
+      }
+    }
+  }
+
+  // 1. IPv4 Validation
+  if (net.isIPv4(normalized)) {
+    const parts = normalized.split('.').map(Number);
+    if (parts.length !== 4 || parts.some(n => isNaN(n) || n < 0 || n > 255)) return true;
+    const [b0, b1, b2, b3] = parts;
+
+    // 0.0.0.0/8 (Current network)
+    if (b0 === 0) return true;
+    // 10.0.0.0/8 (Private IP)
+    if (b0 === 10) return true;
+    // 100.64.0.0/10 (Carrier-Grade NAT / Shared Space)
+    if (b0 === 100 && b1 >= 64 && b1 <= 127) return true;
+    // 127.0.0.0/8 (Loopback)
+    if (b0 === 127) return true;
+    // 169.254.0.0/16 (Link-Local & Cloud Metadata 169.254.169.254)
+    if (b0 === 169 && b1 === 254) return true;
+    // 172.16.0.0/12 (Private IP)
+    if (b0 === 172 && b1 >= 16 && b1 <= 31) return true;
+    // 192.0.0.0/24 (IETF Protocol Assignments)
+    if (b0 === 192 && b1 === 0 && b2 === 0) return true;
+    // 192.0.2.0/24 (TEST-NET-1)
+    if (b0 === 192 && b1 === 0 && b2 === 2) return true;
+    // 192.168.0.0/16 (Private IP)
+    if (b0 === 192 && b1 === 168) return true;
+    // 198.18.0.0/15 (Network Benchmark Testing)
+    if (b0 === 198 && (b1 === 18 || b1 === 19)) return true;
+    // 198.51.100.0/24 (TEST-NET-2)
+    if (b0 === 198 && b1 === 51 && b2 === 100) return true;
+    // 203.0.113.0/24 (TEST-NET-3)
+    if (b0 === 203 && b1 === 0 && b2 === 113) return true;
+    // 224.0.0.0/4 (Multicast) & 240.0.0.0/4 (Reserved)
+    if (b0 >= 224) return true;
+    // Broadcast
+    if (normalized === '255.255.255.255') return true;
+
+    return false;
+  }
+
+  // 2. IPv6 Validation
+  if (net.isIPv6(normalized)) {
+    // :: (Unspecified address)
+    if (normalized === '::' || normalized === '0:0:0:0:0:0:0:0') return true;
+    // ::1 (Loopback)
+    if (normalized === '::1') return true;
+
+    // Check first 16-bit block
+    const firstGroup = normalized.split(':')[0].toLowerCase();
+    const firstNum = parseInt(firstGroup, 16);
+
+    if (!isNaN(firstNum)) {
+      // fc00::/7 (Unique Local Address - covers 0xfc00 to 0xfdff, e.g. fd12::1, fc01::1)
+      if (firstNum >= 0xfc00 && firstNum <= 0xfdff) return true;
+      // fe80::/10 (Link-Local unicast - covers 0xfe80 to 0xfebf, e.g. fe80::1, fe90::1)
+      if (firstNum >= 0xfe80 && firstNum <= 0xfebf) return true;
+      // fec0::/10 (Deprecated Site-Local - covers 0xfec0 to 0xfeff)
+      if (firstNum >= 0xfec0 && firstNum <= 0xfeff) return true;
+      // ff00::/8 (Multicast - covers 0xff00 to 0xffff)
+      if (firstNum >= 0xff00 && firstNum <= 0xffff) return true;
+      // 2001:db8::/32 (Documentation prefix)
+      if (firstNum === 0x2001 && normalized.startsWith('2001:db8')) return true;
+      // 100::/64 (Discard prefix)
+      if (firstNum === 0x100) return true;
+      // 2002::/16 (6to4) - 6to4 encapsulation can contain private IPv4 in bits 16-47
+      if (firstNum === 0x2002) {
+        const parts = normalized.split(':');
+        if (parts.length >= 3) {
+          const h1 = parseInt(parts[1], 16);
+          const h2 = parseInt(parts[2], 16);
+          if (!isNaN(h1) && !isNaN(h2)) {
+            const embeddedIPv4 = `${(h1 >> 8) & 0xff}.${h1 & 0xff}.${(h2 >> 8) & 0xff}.${h2 & 0xff}`;
+            if (isPrivateOrDisallowedIP(embeddedIPv4)) return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
+  // Not a valid standard IP string -> disallowed
+  return true;
+}
+
+function isPrivateOrDisallowedHost(host: string, ip?: string | null): boolean {
+  const clean = (host || '').toLowerCase().trim();
+  const cleanHost = clean.replace(/^\[|\]$/g, '');
+
+  if (
+    cleanHost === 'localhost' ||
+    cleanHost === '0.0.0.0' ||
+    cleanHost.endsWith('.internal') ||
+    cleanHost.endsWith('.local') ||
+    cleanHost.endsWith('.onion') ||
+    cleanHost.endsWith('.lan') ||
+    cleanHost.endsWith('.home') ||
+    cleanHost.endsWith('.corp')
+  ) {
+    return true;
+  }
+
+  // If host itself is an IP literal
+  if (net.isIP(cleanHost)) {
+    if (isPrivateOrDisallowedIP(cleanHost)) {
+      return true;
+    }
+  }
+
+  // If resolved IP is provided, validate it
+  if (ip && isPrivateOrDisallowedIP(ip)) {
+    return true;
+  }
+
+  return false;
+}
 
 async function probeDNS(hostname: string, timeoutMs = 500): Promise<{ ip: string | null; lookupMs: number; error?: string }> {
   const start = performance.now();
+  if (isPrivateOrDisallowedHost(hostname)) {
+    return { ip: null, lookupMs: 1, error: 'Access to private or internal network is disallowed (SSRF Protection)' };
+  }
   try {
     const lookupPromise = dns.lookup(hostname);
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('DNS Timeout')), timeoutMs)
     );
     const result = await Promise.race([lookupPromise, timeoutPromise]);
+    if (isPrivateOrDisallowedIP(result.address)) {
+      return { ip: null, lookupMs: Math.round(performance.now() - start), error: 'Access to private IP is disallowed (SSRF Protection)' };
+    }
     return { ip: result.address, lookupMs: Math.round(performance.now() - start) };
   } catch (err: any) {
     return { ip: null, lookupMs: Math.round(performance.now() - start), error: err.message };
   }
 }
 
-async function probeTLS(hostname: string, port = 443, timeoutMs = 350): Promise<{
+async function probeTLS(
+  hostname: string,
+  targetIp: string,
+  port = 443,
+  timeoutMs = 350
+): Promise<{
   protocol: string | null;
   authorized: boolean;
   issuer: string | null;
@@ -194,11 +359,24 @@ async function probeTLS(hostname: string, port = 443, timeoutMs = 350): Promise<
   error?: string;
 }> {
   const start = performance.now();
+  if (isPrivateOrDisallowedHost(hostname, targetIp)) {
+    return {
+      protocol: null,
+      authorized: false,
+      issuer: null,
+      validTo: null,
+      daysRemaining: null,
+      handshakeMs: 1,
+      error: 'SSRF blocked: Hostname or target IP is disallowed',
+    };
+  }
+
   return new Promise((resolve) => {
     let finished = false;
+    // Pin connection directly to the pre-validated public IP address, while preserving SNI hostname
     const socket = tls.connect(
       {
-        host: hostname,
+        host: targetIp,
         port: port || 443,
         servername: hostname,
         rejectUnauthorized: false,
@@ -249,8 +427,12 @@ async function probeTLS(hostname: string, port = 443, timeoutMs = 350): Promise<
   });
 }
 
-// Unrestricted modern browser headers to bypass WAF / anti-bot blocking (Cloudflare / Akamai / AWS)
-async function probeHTTPHeaders(urlStr: string, timeoutMs = 350): Promise<{
+// Unrestricted modern browser headers to inspect security headers with SSRF-safe manual redirect checks
+async function probeHTTPHeaders(
+  urlStr: string,
+  targetIp: string,
+  timeoutMs = 350
+): Promise<{
   status: number | null;
   hsts: boolean;
   csp: boolean;
@@ -258,48 +440,81 @@ async function probeHTTPHeaders(urlStr: string, timeoutMs = 350): Promise<{
   probeMs: number;
 }> {
   const start = performance.now();
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let currentUrlStr = urlStr;
+  let currentIp = targetIp;
+  const maxRedirects = 2;
 
-    const response = await fetch(urlStr, {
-      method: 'GET',
-      signal: controller.signal,
-      redirect: 'follow',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 (Verity-Security-Audit/2.0; +https://verity.trust/compliance; Passive Non-Intrusive Probing)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9,vi;q=0.8',
-        'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-        'Sec-Ch-Ua-Mobile': '?0',
-        'Sec-Ch-Ua-Platform': '"Windows"',
-      },
-    });
-    clearTimeout(timer);
+  for (let hop = 0; hop <= maxRedirects; hop++) {
+    try {
+      const parsed = new URL(currentUrlStr);
+      if (isPrivateOrDisallowedHost(parsed.hostname, currentIp)) {
+        return { status: null, hsts: false, csp: false, xFrameOptions: false, probeMs: Math.round(performance.now() - start) };
+      }
 
-    const hsts = !!response.headers.get('strict-transport-security');
-    const csp = !!response.headers.get('content-security-policy');
-    const xFrame = !!response.headers.get('x-frame-options');
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    return {
-      status: response.status,
-      hsts,
-      csp,
-      xFrameOptions: xFrame,
-      probeMs: Math.round(performance.now() - start),
-    };
-  } catch {
-    return {
-      status: null,
-      hsts: false,
-      csp: false,
-      xFrameOptions: false,
-      probeMs: Math.round(performance.now() - start),
-    };
+      // Disable automatic redirects to prevent unvalidated hops to internal infrastructure
+      const response = await fetch(currentUrlStr, {
+        method: 'GET',
+        signal: controller.signal,
+        redirect: 'manual',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 (Verity-Security-Audit/2.0; +https://verity.trust/compliance; Passive Non-Intrusive Probing)',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9,vi;q=0.8',
+        },
+      });
+      clearTimeout(timer);
+
+      const hsts = !!response.headers.get('strict-transport-security');
+      const csp = !!response.headers.get('content-security-policy');
+      const xFrame = !!response.headers.get('x-frame-options');
+
+      // Check if redirect response (301, 302, 303, 307, 308)
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get('location');
+        if (location && hop < maxRedirects) {
+          try {
+            const nextUrl = new URL(location, currentUrlStr);
+            if (isPrivateOrDisallowedHost(nextUrl.hostname)) {
+              return { status: response.status, hsts, csp, xFrameOptions: xFrame, probeMs: Math.round(performance.now() - start) };
+            }
+            const nextDns = await probeDNS(nextUrl.hostname, 300);
+            if (!nextDns.ip || isPrivateOrDisallowedIP(nextDns.ip)) {
+              return { status: response.status, hsts, csp, xFrameOptions: xFrame, probeMs: Math.round(performance.now() - start) };
+            }
+            currentUrlStr = nextUrl.href;
+            currentIp = nextDns.ip;
+            continue;
+          } catch {
+            // Invalid redirect target
+          }
+        }
+      }
+
+      return {
+        status: response.status,
+        hsts,
+        csp,
+        xFrameOptions: xFrame,
+        probeMs: Math.round(performance.now() - start),
+      };
+    } catch {
+      break;
+    }
   }
+
+  return {
+    status: null,
+    hsts: false,
+    csp: false,
+    xFrameOptions: false,
+    probeMs: Math.round(performance.now() - start),
+  };
 }
 
-// Combined fast non-blocking infrastructure probe with in-memory caching and port support
+// Combined fast non-blocking infrastructure probe with in-memory caching and strict SSRF order of operations
 async function probeTargetInfrastructure(hostname: string, fullUrl: string, port = 443): Promise<ProbeResult> {
   const cacheKey = `${hostname}:${port}`;
   const cached = PROBE_CACHE.get(cacheKey);
@@ -307,19 +522,56 @@ async function probeTargetInfrastructure(hostname: string, fullUrl: string, port
     return cached;
   }
 
-  const [dnsRes, tlsRes, httpRes] = await Promise.allSettled([
-    probeDNS(hostname, 450),
-    probeTLS(hostname, port, 400),
-    probeHTTPHeaders(fullUrl, 400)
+  // STEP 1: Probe & validate DNS destination first before allowing any connections
+  const dnsRes = await probeDNS(hostname, 450);
+
+  if (!dnsRes.ip || dnsRes.error) {
+    const blockedResult: ProbeResult = {
+      dns: dnsRes,
+      tls: {
+        protocol: null,
+        authorized: false,
+        issuer: null,
+        validTo: null,
+        daysRemaining: null,
+        handshakeMs: 0,
+        error: dnsRes.error || 'Destination IP could not be resolved or was blocked by SSRF filter',
+      },
+      http: {
+        status: null,
+        hsts: false,
+        csp: false,
+        xFrameOptions: false,
+        probeMs: 0,
+      },
+      timestamp: Date.now(),
+    };
+
+    if (PROBE_CACHE.size >= MAX_PROBE_CACHE_ENTRIES) {
+      const oldest = PROBE_CACHE.keys().next().value;
+      if (oldest) PROBE_CACHE.delete(oldest);
+    }
+    PROBE_CACHE.set(cacheKey, blockedResult);
+    return blockedResult;
+  }
+
+  // STEP 2: Concurrently probe TLS and HTTP, strictly pinned to the pre-validated public IP address
+  const [tlsSettled, httpSettled] = await Promise.allSettled([
+    probeTLS(hostname, dnsRes.ip, port, 400),
+    probeHTTPHeaders(fullUrl, dnsRes.ip, 400),
   ]);
 
   const result: ProbeResult = {
-    dns: dnsRes.status === 'fulfilled' ? dnsRes.value : { ip: null, lookupMs: 20, error: 'DNS Failed' },
-    tls: tlsRes.status === 'fulfilled' ? tlsRes.value : { protocol: null, authorized: false, issuer: null, validTo: null, daysRemaining: null, handshakeMs: 50 },
-    http: httpRes.status === 'fulfilled' ? httpRes.value : { status: null, hsts: false, csp: false, xFrameOptions: false, probeMs: 50 },
-    timestamp: Date.now()
+    dns: dnsRes,
+    tls: tlsSettled.status === 'fulfilled' ? tlsSettled.value : { protocol: null, authorized: false, issuer: null, validTo: null, daysRemaining: null, handshakeMs: 50, error: 'TLS Probe Failed' },
+    http: httpSettled.status === 'fulfilled' ? httpSettled.value : { status: null, hsts: false, csp: false, xFrameOptions: false, probeMs: 50 },
+    timestamp: Date.now(),
   };
 
+  if (PROBE_CACHE.size >= MAX_PROBE_CACHE_ENTRIES) {
+    const oldest = PROBE_CACHE.keys().next().value;
+    if (oldest) PROBE_CACHE.delete(oldest);
+  }
   PROBE_CACHE.set(cacheKey, result);
   return result;
 }
@@ -1716,6 +1968,23 @@ Return strictly valid JSON conforming to this schema without markdown formatting
     }
 
     let parsedReport: any = null;
+    let dnsResult: any = null;
+    let tlsResult: any = null;
+    let httpResult: any = null;
+
+    if (targetType === 'url' && targetValue) {
+      try {
+        const parsedUrl = new URL(targetValue.startsWith('http') ? targetValue : `https://${targetValue}`);
+        const hostname = parsedUrl.hostname;
+        const port = parsedUrl.port ? parseInt(parsedUrl.port, 10) : (parsedUrl.protocol === 'http:' ? 80 : 443);
+        const probe = await probeTargetInfrastructure(hostname, parsedUrl.href, port);
+        dnsResult = probe.dns;
+        tlsResult = probe.tls;
+        httpResult = probe.http;
+      } catch {
+        // Continue with heuristic probe
+      }
+    }
 
     // Primary model for deep inference: gemini-3.8-flash
     const modelsToTry = ['gemini-3.8-flash'];
@@ -1757,6 +2026,9 @@ Return strictly valid JSON conforming to this schema without markdown formatting
         targetTitle,
         persona,
         lang,
+        dnsResult,
+        tlsResult,
+        httpResult,
         totalPipelineMs: elapsed,
       });
     }
@@ -1783,6 +2055,14 @@ Return strictly valid JSON conforming to this schema without markdown formatting
       totalLatencyMs: elapsed,
       slaMet: elapsed < 1200,
       slaTargetMs: 1200,
+      dnsLookupMs: dnsResult?.lookupMs,
+      tlsHandshakeMs: tlsResult?.handshakeMs,
+      tlsVersion: tlsResult?.protocol,
+      certIssuer: tlsResult?.issuer,
+      certValidUntil: tlsResult?.validTo,
+      hstsEnabled: httpResult?.hsts,
+      cspEnabled: httpResult?.csp,
+      frameProtection: httpResult?.xFrameOptions,
       scrapingCompliance: {
         auditMethod: 'Passive Non-Intrusive Metadata Inspection',
         vietnamLawCompliance: 'Tuân thủ Điều 8 & 18 Luật An ninh mạng 2018 (Passive public metadata)',
@@ -1928,7 +2208,7 @@ ${JSON.stringify(strArr)}`;
       mergedTranslations[keys[i]] = allTranslatedValues[i] || values[i];
     }
 
-    TRANSLATION_CACHE.set(cacheKey, JSON.stringify(mergedTranslations));
+    putInTranslationCache(cacheKey, JSON.stringify(mergedTranslations));
     return res.json({ translations: mergedTranslations });
   } catch (err: any) {
     console.error('Translation API error:', err);
@@ -1958,6 +2238,14 @@ app.get('/robots.txt', (_req, res) => {
 
 app.get('/sitemap.xml', (_req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'sitemap.xml'));
+});
+
+// Offline Standalone Demo routes
+app.get('/standalone_demo.html', (_req, res) => {
+  res.sendFile(path.resolve(__dirname, 'standalone_demo.html'));
+});
+app.get('/verified_domains.js', (_req, res) => {
+  res.sendFile(path.resolve(__dirname, 'verified_domains.js'));
 });
 
 // Setup dev server with Vite or production static file serving
