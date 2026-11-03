@@ -1,6 +1,0 @@
-{
-  "name": "VeriTrust AI - Nền tảng Đánh giá An toàn, Minh bạch & Hợp pháp (XAI)",
-  "description": "Nền tảng ứng dụng Explainable AI (XAI) kiểm tra độ an toàn (Safety), minh bạch (Transparency) và pháp lý (Legality) cho website, nội dung số và tài liệu pháp lý kèm tiện ích mở rộng Chrome & Firefox.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
