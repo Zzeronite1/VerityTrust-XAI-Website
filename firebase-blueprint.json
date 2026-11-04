@@ -1,0 +1,111 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile in the platform",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "photoURL": { "type": "string", "maxLength": 512 },
+        "currentOrgId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "email", "createdAt"]
+    },
+    "Organization": {
+      "title": "Organization",
+      "description": "Team or Company entity for shared security due diligence",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 128 },
+        "ownerId": { "type": "string", "maxLength": 128 },
+        "description": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "ownerId", "createdAt"]
+    },
+    "OrgMember": {
+      "title": "OrgMember",
+      "description": "Membership and role within an organization",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 256 },
+        "orgId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "role": { "type": "string", "enum": ["owner", "admin", "member", "viewer"] },
+        "invitedBy": { "type": "string", "maxLength": 128 },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "userId", "email", "role", "joinedAt"]
+    },
+    "ScanReport": {
+      "title": "ScanReport",
+      "description": "Trust report for verified website, document, snippet or image",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "orgId": { "type": "string", "maxLength": 128 },
+        "isOrgShared": { "type": "boolean" },
+        "isSensitive": { "type": "boolean" },
+        "targetType": { "type": "string", "enum": ["url", "document", "text", "image"] },
+        "targetTitle": { "type": "string", "maxLength": 500 },
+        "targetValue": { "type": "string", "maxLength": 4000 },
+        "trustScore": { "type": "number" },
+        "safetyScore": { "type": "number" },
+        "transparencyScore": { "type": "number" },
+        "legalityScore": { "type": "number" },
+        "status": { "type": "string", "enum": ["safe", "caution", "danger"] },
+        "summary": { "type": "string", "maxLength": 4000 },
+        "detailsJson": { "type": "string", "maxLength": 100000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "targetType", "trustScore", "status", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Compliance audit trail of team actions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "orgId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userEmail": { "type": "string", "maxLength": 256 },
+        "action": { "type": "string", "maxLength": 128 },
+        "resourceType": { "type": "string", "maxLength": 64 },
+        "resourceId": { "type": "string", "maxLength": 128 },
+        "details": { "type": "string", "maxLength": 500 },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "userId", "action", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile records"
+    },
+    "/organizations/{orgId}": {
+      "schema": "Organization",
+      "description": "Organization entities"
+    },
+    "/organizations/{orgId}/members/{memberId}": {
+      "schema": "OrgMember",
+      "description": "Members and RBAC roles in an organization"
+    },
+    "/scans/{scanId}": {
+      "schema": "ScanReport",
+      "description": "Trust audit scans and assessments"
+    },
+    "/organizations/{orgId}/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Audit trails for organization governance"
+    }
+  }
+}
