@@ -3,22 +3,40 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Verity – Kiểm tra Tính Minh bạch Website</title>
-    <meta name="description" content="Nền tảng Verity kiểm tra độ an toàn, minh bạch và pháp lý cho website." />
+    <title>Verity – Nền tảng Thẩm định An toàn, Minh bạch & Tuân thủ Pháp lý Website</title>
+    <meta name="description" content="Nền tảng Verity ứng dụng Gemini AI kiểm tra độ an toàn, tính minh bạch và mức độ tuân thủ pháp lý cho website, tên miền và hợp đồng ToS." />
 
-    <!-- Google Fonts -->
+    <!-- Google Fonts: Lexend & Montserrat (Hỗ trợ tiếng Việt đầy đủ) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
 
-    <!-- Tailwind CSS CDN (không cần build) -->
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         theme: {
           extend: {
+            colors: {
+              cyber: {
+                950: '#030712',
+                900: '#070e21',
+                850: '#0b1329',
+                800: '#0f1c40',
+                700: '#172a5e',
+                600: '#233f8a',
+              },
+              ocean: {
+                200: '#bae6fd',
+                300: '#7dd3fc',
+                400: '#38bdf8',
+                500: '#0ea5e9',
+                600: '#0284c7',
+              }
+            },
             fontFamily: {
-              sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+              sans: ['"Lexend"', 'system-ui', '-apple-system', 'sans-serif'],
+              display: ['"Montserrat"', 'system-ui', '-apple-system', 'sans-serif'],
             },
           },
         },
@@ -26,441 +44,769 @@
     </script>
 
     <style>
-      /* ===== ANIMATIONS ===== */
-      @keyframes pageEnter {
-        from { opacity: 0; transform: translateY(16px); filter: blur(4px); }
-        to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+      /* ===== MODERN DARK TECH TYPOGRAPHY & BASE ===== */
+      :root {
+        --font-main: 'Lexend', system-ui, sans-serif;
+        --font-display: 'Montserrat', system-ui, sans-serif;
       }
-      @keyframes gradientText {
-        0%   { background-position: 0% 50%; }
-        50%  { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
+
+      body {
+        background-color: #030712;
+        color: #ffffff;
+        font-family: var(--font-main);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
-      @keyframes floatSlow {
-        0%, 100% { transform: translateY(0px); }
-        50%       { transform: translateY(-8px); }
+
+      /* Quy định chữ in đậm có màu xanh biển nổi bật */
+      b, strong, .accent-bold {
+        color: #38bdf8;
+        font-weight: 700;
+      }
+
+      /* Typography H1 Heading */
+      .hero-heading {
+        font-family: var(--font-main);
+        font-weight: 700;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+      }
+
+      /* Subtitle */
+      .hero-subtitle {
+        font-family: var(--font-main);
+        font-weight: 400;
+        color: #94a3b8;
+        line-height: 1.6;
+      }
+
+      /* Logo & Counter Stats Font */
+      .font-display {
+        font-family: var(--font-display);
+      }
+
+      /* Micro-interactions: 0.2s cubic-bezier */
+      .smooth-interactive {
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Cyber grid pattern nền xanh đen công nghệ */
+      .cyber-grid {
+        background-image:
+          linear-gradient(to right, rgba(56, 189, 248, 0.04) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
+        background-size: 32px 32px;
+      }
+
+      /* Tab transition */
+      .tab-content {
+        transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Radar & Live HUD Animations */
+      @keyframes radarSpin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
       }
       @keyframes laserScan {
         0%   { top: -2%; opacity: 0; }
-        10%  { opacity: 1; }
-        90%  { opacity: 1; }
+        15%  { opacity: 1; }
+        85%  { opacity: 1; }
         100% { top: 102%; opacity: 0; }
-      }
-      @keyframes wave {
-        0%, 100% { height: 6px; }
-        50%       { height: 20px; }
       }
       @keyframes shimmerMove {
         0%   { background-position: -200% 0; }
         100% { background-position:  200% 0; }
       }
-      @keyframes radarSpin {
-        from { transform: rotate(0deg); }
-        to   { transform: rotate(360deg); }
-      }
-      @keyframes pulseBorder {
-        0%, 100% { box-shadow: 0 0 18px rgba(6,182,212,.25), 0 0 8px rgba(59,130,246,.15); }
-        50%       { box-shadow: 0 0 40px rgba(6,182,212,.60), 0 0 22px rgba(59,130,246,.45); }
-      }
-      @keyframes scoreReveal {
-        from { stroke-dashoffset: 360; }
-        to   { stroke-dashoffset: var(--dash-offset); }
-      }
-      @keyframes countUp {
-        from { opacity: 0; transform: scale(.6); }
-        to   { opacity: 1; transform: scale(1); }
+      @keyframes wave {
+        0%, 100% { height: 6px; }
+        50%       { height: 20px; }
       }
 
-      .animate-page-enter  { animation: pageEnter  .65s cubic-bezier(.16,1,.3,1) forwards; }
-      .animate-float       { animation: floatSlow  5.5s ease-in-out infinite; }
-      .gradient-text       { background-size: 200% auto; animation: gradientText 6s ease infinite; }
+      .animate-radar-spin  { animation: radarSpin 3.5s linear infinite; }
       .animate-shimmer     {
-        background: linear-gradient(90deg, rgba(37,99,235,.4) 0%, rgba(6,182,212,.95) 50%, rgba(37,99,235,.4) 100%);
+        background: linear-gradient(90deg, rgba(2, 132, 199, 0.3) 0%, rgba(56, 189, 248, 0.9) 50%, rgba(2, 132, 199, 0.3) 100%);
         background-size: 200% 100%;
         animation: shimmerMove 1.6s infinite linear;
       }
-      .animate-pulse-glow  { animation: pulseBorder 2.2s ease-in-out infinite; }
-      .animate-radar-spin  { animation: radarSpin  3.5s linear infinite; }
-      .animate-count-up    { animation: countUp    .5s cubic-bezier(.16,1,.3,1) forwards; }
 
-      /* Cyber grid background */
-      .cyber-grid {
-        background-image:
-          linear-gradient(to right,  rgba(255,255,255,.04) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(255,255,255,.04) 1px, transparent 1px);
-        background-size: 32px 32px;
-      }
-
-      /* Score ring animation */
-      .score-ring circle.progress {
-        transition: stroke-dashoffset .8s cubic-bezier(.16,1,.3,1);
-      }
-
-      /* Wave bars */
-      .wave-bar { animation: wave .9s ease-in-out infinite; }
+      .wave-bar { animation: wave 0.9s ease-in-out infinite; }
       .wave-bar:nth-child(2) { animation-duration: 1.1s; }
-      .wave-bar:nth-child(3) { animation-duration: .75s; }
+      .wave-bar:nth-child(3) { animation-duration: 0.75s; }
       .wave-bar:nth-child(4) { animation-duration: 1.3s; }
-      .wave-bar:nth-child(5) { animation-duration: .85s; }
+      .wave-bar:nth-child(5) { animation-duration: 0.85s; }
+
+      .score-ring circle.progress {
+        transition: stroke-dashoffset 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+      }
 
       /* Custom scrollbar */
-      ::-webkit-scrollbar { width: 6px; }
-      ::-webkit-scrollbar-track { background: #0f172a; }
-      ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+      ::-webkit-scrollbar { width: 7px; height: 7px; }
+      ::-webkit-scrollbar-track { background: #030712; }
+      ::-webkit-scrollbar-thumb { background: #172a5e; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
     </style>
   </head>
 
-  <body class="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-blue-500 selection:text-white">
+  <body class="min-h-screen bg-[#030712] text-white flex flex-col selection:bg-sky-500 selection:text-white relative overflow-x-hidden">
 
-    <!-- ===== PARTICLE BACKGROUND (Canvas) ===== -->
-    <canvas id="bgCanvas" class="fixed inset-0 z-0 pointer-events-none opacity-40"></canvas>
+    <!-- Particle Background Canvas -->
+    <canvas id="bgCanvas" class="fixed inset-0 z-0 pointer-events-none opacity-25"></canvas>
 
-    <!-- ===== NAVBAR ===== -->
-    <header class="sticky top-0 z-40 w-full border-b border-slate-800 bg-slate-950/90 backdrop-blur-xl">
-      <div class="max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between gap-4">
+    <!-- Subtle Radial Mesh Glows phía sau Background -->
+    <div class="fixed top-12 left-1/2 -translate-x-1/2 w-[650px] h-[350px] bg-sky-500/10 blur-[130px] rounded-full pointer-events-none z-0"></div>
+    <div class="fixed top-80 left-1/2 -translate-x-1/2 w-[750px] h-[320px] bg-indigo-600/10 blur-[150px] rounded-full pointer-events-none z-0"></div>
 
-        <!-- Brand -->
-        <div class="flex items-center gap-3 select-none cursor-default">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/25 border border-blue-400/30">
+    <!-- =================================================================== -->
+    <!-- 1. HEADER / NAVBAR: ACTION-FIRST NAVIGATION                         -->
+    <!-- =================================================================== -->
+    <header class="sticky top-0 z-50 w-full border-b border-slate-800/80 bg-[#030712]/90 backdrop-blur-xl">
+      <div class="max-w-7xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between gap-4">
+
+        <!-- Bên trái: Brand Logo (Montserrat ExtraBold 800 + Glow Xanh Tím) -->
+        <div onclick="switchTab('scanner')" class="flex items-center gap-3 cursor-pointer select-none group">
+          <div class="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white shadow-[0_0_20px_rgba(79,70,229,0.35)] border border-sky-400/40 group-hover:shadow-[0_0_25px_rgba(56,189,248,0.5)] smooth-interactive">
             <!-- Shield icon -->
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <polyline points="9 12 11 14 15 10"/>
             </svg>
           </div>
           <div>
-            <div class="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">
-              Verity
+            <div class="flex items-center gap-2">
+              <span class="font-display font-extrabold text-xl tracking-tight text-white group-hover:text-sky-300 smooth-interactive">Verity</span>
+              <span class="px-2 py-0.5 rounded-full bg-blue-950/80 border border-sky-500/30 text-[10px] text-sky-400 font-bold uppercase tracking-wider">
+                XAI 2.0
+              </span>
             </div>
-            <p class="text-[11px] text-slate-400 hidden md:block">Nền tảng Xác nhận Tính Minh bạch</p>
+            <p class="text-[11px] text-slate-400 hidden md:block">Nền tảng Thẩm định Tính Minh bạch</p>
           </div>
         </div>
 
-        <!-- Status beacon -->
-        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-          <span class="relative flex h-2 w-2">
+        <!-- 3 TABS NAVIGATION BUTTONS -->
+        <nav aria-label="Tabs" class="flex items-center bg-[#0b1329]/80 border border-slate-800/90 rounded-2xl p-1 shadow-inner gap-1 backdrop-blur-md">
+          <!-- Tab 1: Giới thiệu -->
+          <button
+            id="tab-btn-intro"
+            type="button"
+            onclick="switchTab('intro')"
+            class="flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold smooth-interactive cursor-pointer text-slate-300 hover:text-white hover:bg-slate-800/60"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
+            <span class="hidden sm:inline">Giới thiệu</span>
+            <span class="sm:hidden">Intro</span>
+          </button>
+
+          <!-- Tab 2: Quét URL / Thẩm định (Trang chính) -->
+          <button
+            id="tab-btn-scanner"
+            type="button"
+            onclick="switchTab('scanner')"
+            class="flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold smooth-interactive cursor-pointer bg-blue-600 text-white shadow-md shadow-blue-900/50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <span class="hidden sm:inline">Quét & Thẩm định</span>
+            <span class="sm:hidden">Quét</span>
+          </button>
+
+          <!-- Tab 3: Giải thích nguyên lý hoạt động -->
+          <button
+            id="tab-btn-explanation"
+            type="button"
+            onclick="switchTab('explanation')"
+            class="flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold smooth-interactive cursor-pointer text-slate-300 hover:text-white hover:bg-slate-800/60"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>
+            </svg>
+            <span class="hidden md:inline">Nguyên lý hoạt động</span>
+            <span class="md:hidden">Nguyên lý</span>
+          </button>
+        </nav>
+
+        <!-- Bên phải: Badge Trạng thái "Hệ thống Trực tuyến" với chấm xanh Pulsing Neon -->
+        <div class="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#0b1329]/80 border border-emerald-500/30 text-emerald-400 text-xs font-semibold shadow-[0_0_15px_rgba(16,185,129,0.15)] backdrop-blur-md">
+          <span class="relative flex h-2.5 w-2.5">
             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_#10b981]"></span>
           </span>
-          <span class="hidden sm:inline">Hệ thống Trực tuyến</span>
+          <span class="tracking-wide">Hệ thống Trực tuyến</span>
         </div>
+
       </div>
     </header>
 
-    <!-- ===== MAIN ===== -->
-    <main class="relative z-10 max-w-6xl mx-auto px-4 sm:px-8 py-10 space-y-10 animate-page-enter">
+    <!-- ===== MAIN CONTENT BODY ===== -->
+    <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-8 sm:py-12">
 
-      <!-- Hero -->
-      <div class="text-center space-y-4 max-w-3xl mx-auto">
-        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          Powered by Gemini AI • Phân tích Minh bạch Thời gian Thực
-        </div>
-
-        <h1 class="text-3xl sm:text-5xl font-bold tracking-tight text-white leading-[1.2]">
-          Xác nhận Tính Minh bạch<br/>
-          <span class="gradient-text bg-gradient-to-r from-blue-400 via-cyan-300 to-indigo-300 bg-clip-text text-transparent">
-            Chuẩn Mực với Verity
-          </span>
-        </h1>
-
-        <p class="text-sm text-slate-400 leading-relaxed max-w-xl mx-auto">
-          Nhập URL bất kỳ để Gemini AI phân tích tính minh bạch, phát hiện lừa đảo và đánh giá mức độ an toàn của website.
-        </p>
-
-        <!-- Stats -->
-        <div class="grid grid-cols-3 gap-3 max-w-lg mx-auto pt-1">
-          <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-            <div class="text-base font-black text-cyan-400">99.8%</div>
-            <div class="text-[10px] text-slate-400">Độ chính xác</div>
-          </div>
-          <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-            <div class="text-base font-black text-emerald-400">100%</div>
-            <div class="text-[10px] text-slate-400">Không hộp đen</div>
-          </div>
-          <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-            <div class="text-base font-black text-indigo-400">NĐ13</div>
-            <div class="text-[10px] text-slate-400">Tuân thủ pháp lý</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ===== SCANNER INPUT ===== -->
-      <div id="scanner-section"
-           class="relative bg-slate-900/95 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl cyber-grid transition-all duration-500"
-           id="scanner-box">
-
-        <!-- HUD corners -->
-        <div class="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-cyan-400/60 rounded-tl pointer-events-none z-20"></div>
-        <div class="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-cyan-400/60 rounded-tr pointer-events-none z-20"></div>
-        <div class="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-cyan-400/60 rounded-bl pointer-events-none z-20"></div>
-        <div class="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-cyan-400/60 rounded-br pointer-events-none z-20"></div>
-
-        <!-- Loading laser curtain (hidden by default) -->
-        <div id="laser-curtain" class="absolute inset-x-0 pointer-events-none z-30 hidden" style="animation: laserScan 2.2s cubic-bezier(.45,.05,.55,.95) infinite;">
-          <div class="h-0.5 bg-gradient-to-r from-transparent via-cyan-300 to-transparent shadow-[0_0_20px_#22d3ee,0_0_40px_#06b6d4]"></div>
-          <div class="h-16 bg-gradient-to-b from-cyan-400/15 via-blue-500/8 to-transparent"></div>
-        </div>
-
-        <!-- Live HUD Header (hidden by default) -->
-        <div id="hud-header" class="hidden bg-gradient-to-r from-slate-950 via-cyan-950/80 to-slate-950 border-b border-cyan-500/40 p-4 space-y-3">
-          <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-cyan-300">
-            <div class="flex items-center gap-3">
-              <div class="relative w-8 h-8 rounded-full border border-cyan-400/50 flex items-center justify-center bg-cyan-950/60 shadow-[0_0_15px_rgba(6,182,212,0.4)]">
-                <div class="absolute inset-0 rounded-full border-t border-cyan-300 animate-radar-spin"></div>
-                <!-- Radio icon -->
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-cyan-400 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>
-                </svg>
-              </div>
-              <div>
-                <div class="font-bold text-white text-xs flex items-center gap-2">
-                  Đang phân tích với Gemini AI
-                  <span class="px-2 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/30 text-[10px] font-mono">LIVE</span>
-                </div>
-                <p id="hud-phase" class="text-[11px] text-cyan-300/80 font-mono transition-all duration-300">
-                  Đang tải nội dung trang web...
-                </p>
-              </div>
-            </div>
-            <!-- Wave bars -->
-            <div class="flex items-end gap-1 h-6 px-3 py-1 bg-slate-900/90 border border-cyan-500/30 rounded-lg">
-              <span class="text-[10px] text-cyan-400/80 font-mono mr-1 uppercase font-semibold">AI</span>
-              <span class="w-1 bg-cyan-400 rounded-full wave-bar" style="height:6px"></span>
-              <span class="w-1 bg-cyan-300 rounded-full wave-bar" style="height:18px"></span>
-              <span class="w-1 bg-blue-400 rounded-full wave-bar" style="height:10px"></span>
-              <span class="w-1 bg-cyan-400 rounded-full wave-bar" style="height:22px"></span>
-              <span class="w-1 bg-indigo-400 rounded-full wave-bar" style="height:12px"></span>
-            </div>
-          </div>
-          <!-- Progress bar -->
-          <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-            <div class="h-full rounded-full animate-shimmer"></div>
-          </div>
-          <!-- Steps -->
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-            <div class="flex items-center gap-1.5 text-emerald-400 font-medium">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              1. Nhận URL
-            </div>
-            <div id="step2" class="flex items-center gap-1.5 text-cyan-300 font-medium">
-              <div class="w-3 h-3 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin"></div>
-              2. Cào nội dung
-            </div>
-            <div id="step3" class="flex items-center gap-1.5 text-slate-400">
-              <div class="w-1.5 h-1.5 rounded-full bg-slate-600"></div>
-              3. Gọi Gemini AI
-            </div>
-            <div id="step4" class="flex items-center gap-1.5 text-slate-400">
-              <div class="w-1.5 h-1.5 rounded-full bg-slate-600"></div>
-              4. Cấp Báo cáo
-            </div>
-          </div>
-        </div>
-
-        <!-- Input form -->
-        <form id="analyze-form" class="p-6 space-y-4">
-          <div class="space-y-2">
-            <label class="text-xs font-semibold text-slate-200 flex items-center gap-2">
-              Nhập URL website cần phân tích:
-              <span class="text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                Công khai • An toàn
-              </span>
-            </label>
-            <div class="relative">
-              <input
-                id="url-input"
-                type="text"
-                placeholder="Ví dụ: shopee.vn, vietcombank.com.vn, facebook.com hoặc https://..."
-                class="w-full bg-slate-950 border border-slate-700 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition font-mono"
-              />
-              <!-- Globe icon -->
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-500 absolute left-4 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-              </svg>
-            </div>
-            <!-- Quick domain chips -->
-            <div class="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
-              <span class="text-slate-500">Tra nhanh:</span>
-              <button type="button" onclick="setUrl('shopee.vn')" class="quick-chip">shopee.vn</button>
-              <button type="button" onclick="setUrl('vietcombank.com.vn')" class="quick-chip">vietcombank.com.vn</button>
-              <button type="button" onclick="setUrl('chinhphu.vn')" class="quick-chip">chinhphu.vn</button>
-              <button type="button" onclick="setUrl('fpt.com')" class="quick-chip">fpt.com</button>
-              <button type="button" onclick="setUrl('vietcombank-xac-thuc-otp-khan-cap.top')" class="quick-chip text-red-400 border-red-800/50">⚠ Phishing mẫu</button>
-            </div>
+      <!-- ================================================================= -->
+      <!-- TAB 2: QUÉT URL & THẨM ĐỊNH (SCANNER - ACTION-FIRST HERO SECTION) -->
+      <!-- ================================================================= -->
+      <section id="view-scanner" class="tab-content space-y-10">
+        
+        <!-- 2. HERO HEADER (TYPOGRAPHY LEXEND + SUBTLE NEON PILL) -->
+        <div class="text-center space-y-4 max-w-3xl mx-auto pt-2">
+          
+          <!-- Pill Badge phía trên H1: Neon Aura nhẹ nhàng -->
+          <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-400/30 text-sky-300 text-xs font-semibold shadow-[0_0_20px_rgba(56,189,248,0.2)] backdrop-blur-md">
+            <span class="text-sky-400">⚡</span>
+            <span>Powered by Gemini AI • Thẩm định Minh bạch Thời gian thực</span>
           </div>
 
-          <!-- Error message -->
-          <div id="error-msg" class="hidden p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span id="error-text"></span>
-          </div>
+          <!-- Heading H1: Lexend Bold (700), line-height: 1.2, letter-spacing: -0.02em, Gradient từ trắng sang sky blue -->
+          <h1 class="hero-heading text-3xl sm:text-5xl lg:text-[52px] text-white">
+            Xác nhận Tính Minh bạch <br class="hidden sm:inline" />
+            <span class="bg-gradient-to-r from-white via-sky-200 to-sky-400 bg-clip-text text-transparent">
+              Chuẩn Mực với Verity
+            </span>
+          </h1>
 
-          <!-- Submit -->
-          <div class="flex justify-end pt-1">
-            <button id="submit-btn" type="submit"
-              class="px-7 py-3 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2.5 cursor-pointer shadow-lg active:scale-95 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white shadow-blue-600/30 hover:shadow-cyan-500/30 hover:-translate-y-0.5">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-cyan-200 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-              Phân tích Minh bạch Ngay
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- ===== RESULT CARD ===== -->
-      <div id="result-section" class="hidden space-y-6 animate-page-enter">
-
-        <!-- Header bar -->
-        <div class="flex items-center justify-between">
-          <h2 class="text-base font-bold text-white flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Báo cáo Thẩm định Minh bạch
-          </h2>
-          <button onclick="resetForm()" class="text-xs text-slate-400 hover:text-cyan-300 transition flex items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.47"/></svg>
-            Quét lại
-          </button>
-        </div>
-
-        <!-- Main result card -->
-        <div id="result-card" class="relative p-6 sm:p-8 rounded-3xl border backdrop-blur-xl overflow-hidden cyber-grid space-y-6">
-
-          <!-- Top: Score ring + summary -->
-          <div class="flex flex-col sm:flex-row items-center gap-6">
-
-            <!-- Score ring -->
-            <div class="relative shrink-0 flex items-center justify-center" style="width:130px;height:130px">
-              <svg width="130" height="130" viewBox="0 0 130 130" class="absolute inset-0 -rotate-90">
-                <circle cx="65" cy="65" r="57" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="10"/>
-                <circle id="score-ring" cx="65" cy="65" r="57" fill="none" stroke-width="10"
-                        stroke-linecap="round"
-                        stroke-dasharray="358"
-                        stroke-dashoffset="358"
-                        class="score-ring progress transition-all duration-1000"/>
-              </svg>
-              <div class="relative text-center">
-                <div id="score-num" class="text-4xl font-black text-white animate-count-up">0</div>
-                <div class="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Trust Score</div>
-              </div>
-            </div>
-
-            <!-- Status + summary -->
-            <div class="flex-1 space-y-3 text-center sm:text-left">
-              <div id="status-badge"
-                   class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold border">
-                <span id="status-dot" class="w-2 h-2 rounded-full animate-pulse"></span>
-                <span id="status-text"></span>
-              </div>
-              <p class="text-[13px] text-slate-300 leading-relaxed" id="summary-text"></p>
-              <p class="text-[11px] text-slate-500 font-mono" id="analyzed-url-display"></p>
-            </div>
-          </div>
-
-          <!-- Red Flags -->
-          <div id="red-flags-section" class="space-y-3">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-red-400 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              Dấu hiệu Rủi ro (Red Flags)
-            </h3>
-            <div id="red-flags-list" class="space-y-2"></div>
-          </div>
-
-          <!-- Recommendations -->
-          <div id="recommendations-section" class="space-y-3">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-              Lời khuyên Hành động
-            </h3>
-            <div id="recommendations-list" class="space-y-2"></div>
-          </div>
-
-          <!-- Disclaimer -->
-          <p class="text-[10px] text-slate-600 border-t border-slate-800 pt-4">
-            ⚠ Báo cáo mang tính chất tham khảo kỹ thuật từ Gemini AI, không phải lời khuyên pháp lý ràng buộc. Verity sử dụng kiến trúc Client-Server — API key được bảo mật hoàn toàn ở backend.
+          <!-- Subtitle: Lexend Regular (400), #94a3b8, line-height: 1.6 -->
+          <p class="hero-subtitle text-sm sm:text-base max-w-2xl mx-auto">
+            Nền tảng trí tuệ nhân tạo bóc tách trực tiếp mã nguồn URL, rà soát điều khoản dịch vụ <b>ToS</b> và phát hiện các dấu hiệu cờ bạc, lừa đảo theo quy chuẩn an toàn số.
           </p>
         </div>
-      </div>
 
-      <!-- ===== HOW IT WORKS (3 bước) ===== -->
-      <div id="how-it-works" class="space-y-5">
-        <div class="text-center space-y-1">
-          <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">Quy trình Xác nhận Minh bạch</h3>
-          <p class="text-xs text-slate-500">Mọi website được phân tích tự động qua 3 giai đoạn</p>
+        <!-- 3. ACTION SECTION: SCANNER INPUT BOX (CYBER HUD BOX) -->
+        <div id="scanner-box" class="relative bg-[#0b1329]/90 border border-slate-800/90 rounded-3xl shadow-[0_10px_35px_rgba(0,0,0,0.45)] overflow-hidden cyber-grid smooth-interactive backdrop-blur-xl">
+          
+          <!-- HUD corners -->
+          <div class="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-sky-400/60 rounded-tl pointer-events-none z-20"></div>
+          <div class="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-sky-400/60 rounded-tr pointer-events-none z-20"></div>
+          <div class="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-sky-400/60 rounded-bl pointer-events-none z-20"></div>
+          <div class="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-sky-400/60 rounded-br pointer-events-none z-20"></div>
+
+          <!-- Rèm Laser Quét khi đang tải (ẩn mặc định) -->
+          <div id="laser-curtain" class="absolute inset-x-0 pointer-events-none z-30 hidden" style="animation: laserScan 2.2s cubic-bezier(.45,.05,.55,.95) infinite;">
+            <div class="h-0.5 bg-sky-400 shadow-[0_0_15px_#38bdf8,0_0_30px_#0ea5e9]"></div>
+            <div class="h-16 bg-gradient-to-b from-sky-400/20 via-blue-500/10 to-transparent"></div>
+          </div>
+
+          <!-- Live Scanning HUD Header khi đang quét (ẩn mặc định) -->
+          <div id="hud-header" class="hidden bg-[#030712]/95 border-b border-slate-800 p-4 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-sky-300">
+              <div class="flex items-center gap-3">
+                <div class="relative w-8 h-8 rounded-full border border-sky-400/50 flex items-center justify-center bg-blue-950/60 shadow-md">
+                  <div class="absolute inset-0 rounded-full border-t border-sky-300 animate-radar-spin"></div>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="font-bold text-white text-xs flex items-center gap-2">
+                    <span>Đang Thẩm định Thực tế với Gemini AI</span>
+                    <span class="px-2 py-0.5 rounded-full bg-blue-900/60 border border-sky-400/30 text-[10px] text-sky-400 font-mono">LIVE HUD</span>
+                  </div>
+                  <p id="hud-phase" class="text-[11px] text-slate-300 font-mono transition-all duration-300">
+                    Đang tải và trích xuất nội dung văn bản từ trang web...
+                  </p>
+                </div>
+              </div>
+              <!-- Telemetry wave bars -->
+              <div class="flex items-end gap-1 h-6 px-3 py-1 bg-[#070e21] border border-slate-800 rounded-lg">
+                <span class="text-[10px] text-sky-400 font-mono mr-1 uppercase font-semibold">AI Stream</span>
+                <span class="w-1 bg-sky-400 rounded-full wave-bar" style="height:6px"></span>
+                <span class="w-1 bg-sky-300 rounded-full wave-bar" style="height:18px"></span>
+                <span class="w-1 bg-blue-400 rounded-full wave-bar" style="height:10px"></span>
+                <span class="w-1 bg-sky-400 rounded-full wave-bar" style="height:22px"></span>
+                <span class="w-1 bg-indigo-400 rounded-full wave-bar" style="height:12px"></span>
+              </div>
+            </div>
+
+            <!-- Thanh tiến trình Shimmer -->
+            <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden">
+              <div class="h-full rounded-full animate-shimmer"></div>
+            </div>
+
+            <!-- 4 Nút quy trình -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+              <div class="flex items-center gap-1.5 text-emerald-400 font-medium">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                1. Tải HTML thô
+              </div>
+              <div class="flex items-center gap-1.5 text-sky-300 font-medium">
+                <div class="w-3 h-3 rounded-full border-2 border-sky-400 border-t-transparent animate-spin"></div>
+                2. Bóc tách nội dung
+              </div>
+              <div class="flex items-center gap-1.5 text-slate-400">
+                <div class="w-1.5 h-1.5 rounded-full bg-slate-600"></div>
+                3. Gemini phân tích
+              </div>
+              <div class="flex items-center gap-1.5 text-slate-400">
+                <div class="w-1.5 h-1.5 rounded-full bg-slate-600"></div>
+                4. Cấp Báo cáo
+              </div>
+            </div>
+          </div>
+
+          <!-- Form nhập URL -->
+          <form id="analyze-form" class="p-6 sm:p-8 space-y-4">
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-semibold text-white flex items-center gap-2">
+                  <span>Nhập URL hoặc Tên miền website cần kiểm tra:</span>
+                  <span class="text-[10px] font-semibold bg-blue-950 border border-sky-400/30 text-sky-400 px-2.5 py-0.5 rounded-full">
+                    Bảo mật • Trích xuất nội dung thực
+                  </span>
+                </label>
+                <span class="text-[11px] text-slate-400">Hỗ trợ .vn, .com, .net, sub-domain...</span>
+              </div>
+
+              <!-- Input với Micro-interactions 0.2s -->
+              <div class="relative">
+                <input
+                  id="url-input"
+                  type="text"
+                  required
+                  placeholder="Ví dụ: shopee.vn, vietcombank.com.vn, fpt.com hoặc dán liên kết..."
+                  class="w-full bg-[#070e21] border border-slate-700/80 rounded-2xl pl-12 pr-4 py-3.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-400/30 smooth-interactive font-mono"
+                />
+                <!-- Globe icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-sky-400 absolute left-4 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+              </div>
+
+              <!-- Nút chọn mẫu thử nghiệm nhanh (Quick Chips với smooth-interactive) -->
+              <div class="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
+                <span class="text-slate-400 font-medium">Tra cứu mẫu:</span>
+                <button type="button" onclick="setUrl('shopee.vn')" class="px-2.5 py-1 rounded-lg bg-[#070e21] hover:bg-slate-800 hover:border-sky-400/50 text-slate-300 font-mono text-[11px] border border-slate-800 cursor-pointer smooth-interactive">shopee.vn</button>
+                <button type="button" onclick="setUrl('vietcombank.com.vn')" class="px-2.5 py-1 rounded-lg bg-[#070e21] hover:bg-slate-800 hover:border-sky-400/50 text-slate-300 font-mono text-[11px] border border-slate-800 cursor-pointer smooth-interactive">vietcombank.com.vn</button>
+                <button type="button" onclick="setUrl('chinhphu.vn')" class="px-2.5 py-1 rounded-lg bg-[#070e21] hover:bg-slate-800 hover:border-sky-400/50 text-slate-300 font-mono text-[11px] border border-slate-800 cursor-pointer smooth-interactive">chinhphu.vn</button>
+                <button type="button" onclick="setUrl('fpt.com')" class="px-2.5 py-1 rounded-lg bg-[#070e21] hover:bg-slate-800 hover:border-sky-400/50 text-slate-300 font-mono text-[11px] border border-slate-800 cursor-pointer smooth-interactive">fpt.com</button>
+                <button type="button" onclick="setUrl('https://www.bet88.casino/')" class="px-2.5 py-1 rounded-lg bg-red-950/30 hover:bg-red-900/50 hover:border-red-500/60 text-red-300 font-mono text-[11px] border border-red-800/40 cursor-pointer smooth-interactive">⚠️ bet88.casino (Mẫu cờ bạc)</button>
+                <button type="button" onclick="setUrl('https://www.m88sut.com/')" class="px-2.5 py-1 rounded-lg bg-red-950/30 hover:bg-red-900/50 hover:border-red-500/60 text-red-300 font-mono text-[11px] border border-red-800/40 cursor-pointer smooth-interactive">⚠️ m88sut.com (Mẫu cá cược)</button>
+              </div>
+            </div>
+
+            <!-- Error message alert -->
+            <div id="error-msg" class="hidden p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span id="error-text"></span>
+            </div>
+
+            <!-- Submit action row -->
+            <div class="flex items-center justify-end pt-2 border-t border-slate-800">
+              <button
+                id="submit-btn"
+                type="submit"
+                class="px-7 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:shadow-[0_0_25px_rgba(56,189,248,0.5)] smooth-interactive flex items-center gap-2.5 cursor-pointer active:scale-95"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+                <span>Phân tích Minh bạch Ngay</span>
+              </button>
+            </div>
+          </form>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div class="group p-5 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-blue-500/50 hover:-translate-y-1 transition-all duration-300 space-y-3">
-            <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-            </div>
-            <div class="text-[11px] font-bold uppercase tracking-wider text-blue-400">Bước 1</div>
-            <h4 class="font-bold text-white text-sm group-hover:text-blue-300 transition-colors">Thu thập Nội dung</h4>
-            <p class="text-xs text-slate-400 leading-relaxed">Backend tải HTML thô từ URL, lọc nội dung text và điều khoản ToS/Privacy Policy của trang.</p>
+
+        <!-- ================= KẾT QUẢ PHÂN TÍCH (RESULT SECTION) ================= -->
+        <div id="result-section" class="hidden space-y-6">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span>Báo cáo Giám định Tính Minh bạch</span>
+            </h2>
+            <button onclick="resetScanner()" class="text-xs text-sky-400 hover:text-sky-300 smooth-interactive flex items-center gap-1 cursor-pointer">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.47"/></svg>
+              <span>Quét trang khác</span>
+            </button>
           </div>
-          <div class="group p-5 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-cyan-500/50 hover:-translate-y-1 transition-all duration-300 space-y-3">
-            <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+
+          <!-- Result Card chính -->
+          <div id="result-card" class="p-6 sm:p-8 rounded-3xl bg-[#0b1329]/90 border border-slate-800 shadow-2xl space-y-6 cyber-grid backdrop-blur-xl">
+            
+            <!-- Top: Score Ring + Summary -->
+            <div class="flex flex-col sm:flex-row items-center gap-6">
+              
+              <!-- SVG Score Ring -->
+              <div class="relative shrink-0 flex items-center justify-center" style="width: 140px; height: 140px;">
+                <svg width="140" height="140" viewBox="0 0 140 140" class="absolute inset-0 -rotate-90">
+                  <circle cx="70" cy="70" r="60" fill="none" stroke="#172a5e" stroke-width="10"/>
+                  <circle
+                    id="score-ring"
+                    cx="70"
+                    cy="70"
+                    r="60"
+                    fill="none"
+                    stroke-width="10"
+                    stroke-linecap="round"
+                    stroke-dasharray="377"
+                    stroke-dashoffset="377"
+                    class="score-ring progress"
+                  />
+                </svg>
+                <div class="relative text-center">
+                  <div id="score-num" class="font-display text-4xl font-black text-white">0</div>
+                  <div class="text-[10px] text-sky-400 font-bold uppercase tracking-wider">Trust Score</div>
+                </div>
+              </div>
+
+              <!-- Verdict & Summary -->
+              <div class="flex-1 space-y-3 text-center sm:text-left">
+                <div id="status-badge" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold border">
+                  <span id="status-dot" class="w-2.5 h-2.5 rounded-full"></span>
+                  <span id="status-text">Đang phân tích</span>
+                </div>
+                <p id="summary-text" class="text-sm text-slate-200 leading-relaxed"></p>
+                <div class="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                  <span id="analyzed-url-display" class="text-sky-400 font-mono"></span>
+                  <span class="text-slate-500 hidden sm:inline">•</span>
+                  <span id="engine-display" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-950/60 border border-sky-400/30 text-sky-300 text-[11px] font-mono"></span>
+                </div>
+              </div>
             </div>
-            <div class="text-[11px] font-bold uppercase tracking-wider text-cyan-400">Bước 2</div>
-            <h4 class="font-bold text-white text-sm group-hover:text-cyan-300 transition-colors">Phân tích bằng Gemini AI</h4>
-            <p class="text-xs text-slate-400 leading-relaxed">Gemini 2.5 Flash đánh giá độ minh bạch, phát hiện cờ đỏ (red flags) và các dấu hiệu lừa đảo.</p>
-          </div>
-          <div class="group p-5 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-emerald-500/50 hover:-translate-y-1 transition-all duration-300 space-y-3">
-            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+
+            <!-- Red Flags Section (Dấu hiệu rủi ro) -->
+            <div id="red-flags-section" class="space-y-3 pt-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-red-400 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>Dấu hiệu Rủi ro & Bằng chứng phát hiện được (Red Flags)</span>
+              </h3>
+              <div id="red-flags-list" class="space-y-2"></div>
             </div>
-            <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Bước 3</div>
-            <h4 class="font-bold text-white text-sm group-hover:text-emerald-300 transition-colors">Cấp Báo cáo Minh bạch</h4>
-            <p class="text-xs text-slate-400 leading-relaxed">Trả về Trust Score (0-100), trạng thái an toàn, danh sách rủi ro và lời khuyên hành động cụ thể.</p>
+
+            <!-- Recommendations Section (Lời khuyên) -->
+            <div id="recommendations-section" class="space-y-3 pt-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <span>Khuyến nghị Hành động An toàn</span>
+              </h3>
+              <div id="recommendations-list" class="space-y-2"></div>
+            </div>
+
+            <!-- Legal disclaimer -->
+            <div class="text-[11px] text-slate-400 border-t border-slate-800 pt-4">
+              <b>Cam kết minh bạch:</b> Báo cáo được tổng hợp bởi Gemini AI dựa trên việc cào nội dung thực tế và đối chiếu với quy định pháp luật Việt Nam. API key được bảo mật 100% tại Backend.
+            </div>
           </div>
         </div>
-      </div>
+
+        <!-- ================================================================= -->
+        <!-- 4. SOCIAL PROOF & STATS BENTO GRID (ĐẶT DƯỚI PHẦN ACTION)          -->
+        <!-- ================================================================= -->
+        <div class="rounded-2xl bg-[#0b1329]/70 border border-slate-800/80 shadow-[0_4px_25px_rgba(0,0,0,0.3)] backdrop-blur-xl overflow-hidden">
+          <div class="grid grid-cols-1 md:grid-cols-3 md:divide-x md:divide-slate-800/80 divide-y md:divide-y-0">
+            
+            <!-- Cột 1: 99.8% -->
+            <div class="p-6 text-center space-y-1.5 smooth-interactive hover:bg-[#0f1c40]/30">
+              <div class="font-display font-extrabold text-3xl sm:text-4xl text-[#f8fafc] tracking-tight">
+                99.8%
+              </div>
+              <div class="text-xs font-bold text-sky-400 uppercase tracking-wider">
+                Độ chính xác đối chiếu
+              </div>
+              <p class="text-[11px] text-slate-400 leading-relaxed max-w-xs mx-auto">
+                Bóc tách trực tiếp nội dung HTML và rà soát cơ sở dữ liệu các chiến dịch lừa đảo số.
+              </p>
+            </div>
+
+            <!-- Cột 2: 100% -->
+            <div class="p-6 text-center space-y-1.5 smooth-interactive hover:bg-[#0f1c40]/30">
+              <div class="font-display font-extrabold text-3xl sm:text-4xl text-[#f8fafc] tracking-tight">
+                100%
+              </div>
+              <div class="text-xs font-bold text-sky-400 uppercase tracking-wider">
+                Minh bạch không hộp đen
+              </div>
+              <p class="text-[11px] text-slate-400 leading-relaxed max-w-xs mx-auto">
+                Trích xuất nguyên văn điều khoản và dấu hiệu bất thường làm bằng chứng cụ thể.
+              </p>
+            </div>
+
+            <!-- Cột 3: NĐ13 -->
+            <div class="p-6 text-center space-y-1.5 smooth-interactive hover:bg-[#0f1c40]/30">
+              <div class="font-display font-extrabold text-3xl sm:text-4xl text-[#f8fafc] tracking-tight">
+                NĐ 13
+              </div>
+              <div class="text-xs font-bold text-sky-400 uppercase tracking-wider">
+                Tuân thủ pháp lý số
+              </div>
+              <p class="text-[11px] text-slate-400 leading-relaxed max-w-xs mx-auto">
+                Đối chiếu chặt chẽ với Nghị định 13/2023/NĐ-CP và Bộ luật Hình sự Việt Nam.
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ================================================================= -->
+      <!-- TAB 1: GIỚI THIỆU (INTRODUCTION VIEW)                            -->
+      <!-- ================================================================= -->
+      <section id="view-intro" class="tab-content space-y-10 hidden">
+        <!-- Hero Header -->
+        <div class="text-center space-y-4 max-w-3xl mx-auto pt-2">
+          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-500/10 border border-sky-400/30 text-sky-300 text-xs font-semibold shadow-[0_0_15px_rgba(56,189,248,0.15)] backdrop-blur-md">
+            <span>🛡️ Nền tảng Thẩm định An toàn & Minh bạch Số</span>
+          </div>
+          <h1 class="hero-heading text-3xl sm:text-4xl lg:text-5xl text-white">
+            Xác minh Tính Minh bạch & Pháp lý <br />
+            <span class="bg-gradient-to-r from-white via-sky-200 to-sky-400 bg-clip-text text-transparent">
+              Chuẩn Mực với Verity
+            </span>
+          </h1>
+          <p class="hero-subtitle text-sm sm:text-base max-w-2xl mx-auto">
+            Giải pháp ứng dụng <b>Trí tuệ Nhân tạo Giải thích được (Explainable AI)</b> kết hợp mô hình ngôn ngữ lớn <b>Google Gemini AI</b> giúp người dùng và doanh nghiệp thẩm định mức độ tin cậy, phòng chống lừa đảo và kiểm tra tuân thủ pháp luật Việt Nam.
+          </p>
+          <div class="pt-3 flex flex-wrap items-center justify-center gap-4">
+            <button
+              type="button"
+              onclick="switchTab('scanner')"
+              class="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm shadow-[0_0_20px_rgba(37,99,235,0.4)] smooth-interactive flex items-center gap-2 cursor-pointer"
+            >
+              <span>Trải nghiệm Quét Ngay</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+            <button
+              type="button"
+              onclick="switchTab('explanation')"
+              class="px-6 py-3 rounded-xl bg-[#0b1329] hover:bg-slate-800 border border-slate-800 text-slate-200 font-semibold text-xs sm:text-sm smooth-interactive cursor-pointer"
+            >
+              Xem Nguyên lý Chấm điểm
+            </button>
+          </div>
+        </div>
+
+        <!-- Điểm khác biệt cốt lõi -->
+        <div class="p-6 sm:p-8 rounded-3xl bg-[#0b1329]/80 border border-slate-800 shadow-xl space-y-4 cyber-grid backdrop-blur-xl">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-600/20 border border-sky-400/30 flex items-center justify-center text-sky-400">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-white">Điểm khác biệt Cốt lõi: Minh bạch Giải thích được — Không Hộp đen</h2>
+              <p class="text-xs text-slate-400">Cung cấp lý do, bằng chứng văn bản cụ thể thay vì chỉ đưa ra một điểm số trừu tượng.</p>
+            </div>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            Phần lớn các công cụ kiểm tra thông thường chỉ trả về thông báo <b>"An toàn"</b> hoặc <b>"Nguy hiểm"</b> mà người dùng không biết lý do vì sao. 
+            <b>Verity</b> ứng dụng cơ chế giải thích minh bạch: tải trực tiếp nội dung HTML, bóc tách các điều khoản dịch vụ (ToS), phát hiện các cờ đỏ (red flags) và trích xuất nguyên văn bằng chứng vi phạm theo pháp luật Việt Nam.
+          </p>
+        </div>
+
+        <!-- 3 Nhóm đối tượng phục vụ -->
+        <div class="space-y-4">
+          <div class="text-center space-y-1">
+            <h2 class="text-xl font-bold text-white">Đối tượng Phục vụ & Trường hợp Ứng dụng</h2>
+            <p class="text-xs text-slate-400">Thiết kế tối ưu cho 3 nhóm đối tượng người dùng chính trong xã hội số</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Nhóm 1 -->
+            <div class="p-6 rounded-2xl bg-[#0b1329]/80 border border-slate-800 space-y-3 hover:border-sky-400/40 smooth-interactive">
+              <div class="w-10 h-10 rounded-xl bg-blue-600/20 border border-sky-400/30 flex items-center justify-center text-sky-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <h3 class="font-bold text-white text-base">Cộng đồng Người dùng Cá nhân</h3>
+              <ul class="text-xs text-slate-300 space-y-2 leading-relaxed">
+                <li class="flex items-start gap-2">
+                  <span class="text-sky-400 font-bold">•</span>
+                  <span>Kiểm tra tức thì các liên kết lạ, website mạo danh ngân hàng hoặc bẫy đánh cắp <b>mã OTP</b>.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-sky-400 font-bold">•</span>
+                  <span>Nhận diện các trang thương mại điện tử lừa đảo, hạ giá bất thường để thu thập thẻ tín dụng.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-sky-400 font-bold">•</span>
+                  <span>Cảnh báo triệt để các cổng cờ bạc, cá độ bóng đá phi pháp xâm hại đời sống gia đình.</span>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Nhóm 2 -->
+            <div class="p-6 rounded-2xl bg-[#0b1329]/80 border border-slate-800 space-y-3 hover:border-sky-400/40 smooth-interactive">
+              <div class="w-10 h-10 rounded-xl bg-blue-600/20 border border-sky-400/30 flex items-center justify-center text-sky-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+              </div>
+              <h3 class="font-bold text-white text-base">Doanh nghiệp vừa và nhỏ (SME)</h3>
+              <ul class="text-xs text-slate-300 space-y-2 leading-relaxed">
+                <li class="flex items-start gap-2">
+                  <span class="text-sky-400 font-bold">•</span>
+                  <span>Rà soát mức độ uy tín của đối tác cung cấp dịch vụ trực tuyến trước khi chuyển tiền hợp đồng.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-sky-400 font-bold">•</span>
+                  <span>Tự kiểm toán website công ty xem có đáp ứng chuẩn bảo vệ dữ liệu <b>Nghị định 13/2023/NĐ-CP</b> hay không.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-sky-400 font-bold">•</span>
+                  <span>Bảo vệ uy tín thương hiệu khỏi các chiến dịch tạo tên miền phụ giả mạo trục lợi.</span>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Nhóm 3 -->
+            <div class="p-6 rounded-2xl bg-[#0b1329]/80 border border-slate-800 space-y-3 hover:border-sky-400/40 smooth-interactive">
+              <div class="w-10 h-10 rounded-xl bg-blue-600/20 border border-sky-400/30 flex items-center justify-center text-sky-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <h3 class="font-bold text-white text-base">Cơ quan & Pháp chế Doanh nghiệp</h3>
+              <ul class="text-xs text-slate-300 space-y-2 leading-relaxed">
+                <li class="flex items-start gap-2">
+                  <span class="text-sky-400 font-bold">•</span>
+                  <span>Đối chiếu các điều khoản dịch vụ (ToS) độc hại: tự ý bán dữ liệu cá nhân, miễn trừ trách nhiệm vô lý.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-sky-400 font-bold">•</span>
+                  <span>Kiểm tra sự tuân thủ các quy định quốc gia (Luật An ninh mạng 2018) và quốc tế (GDPR).</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-sky-400 font-bold">•</span>
+                  <span>Lưu trữ bằng chứng giám định kỹ thuật phục vụ xử lý tranh chấp và điều tra số.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================= -->
+      <!-- TAB 3: NGUYÊN LÝ HOẠT ĐỘNG (EXPLANATION VIEW)                     -->
+      <!-- ================================================================= -->
+      <section id="view-explanation" class="tab-content space-y-10 hidden">
+        
+        <!-- Header -->
+        <div class="text-center space-y-3 max-w-3xl mx-auto pt-2">
+          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-500/10 border border-sky-400/30 text-sky-300 text-xs font-semibold shadow-[0_0_15px_rgba(56,189,248,0.15)] backdrop-blur-md">
+            <span>⚙️ Kiến trúc Thuật toán & Khung Pháp lý</span>
+          </div>
+          <h1 class="hero-heading text-3xl sm:text-4xl text-white">
+            Nguyên lý Hoạt động & Công thức Chấm điểm
+          </h1>
+          <p class="hero-subtitle text-xs sm:text-sm max-w-2xl mx-auto">
+            Hệ thống vận hành theo cơ chế <b>Explainable AI (XAI)</b> minh bạch 100%, không sử dụng "hộp đen" và tuân thủ nghiêm ngặt hệ thống pháp luật Việt Nam.
+          </p>
+        </div>
+
+        <!-- Công thức 3 trụ cột (Mathematical Formulation) -->
+        <div class="p-6 sm:p-8 rounded-3xl bg-[#0b1329]/80 border border-slate-800 shadow-xl space-y-6 cyber-grid backdrop-blur-xl">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+            <span>1. Công thức Tính Điểm Tin Cậy (Trust Score 0 - 100)</span>
+          </h2>
+          
+          <div class="p-4 sm:p-5 rounded-2xl bg-[#070e21] border border-slate-800 font-mono text-xs sm:text-sm text-sky-300 leading-relaxed overflow-x-auto">
+            Trust_Score = (Điểm_Kỹ_Thuật × 0.40) + (Điểm_Minh_Bạch × 0.30) + (Điểm_Pháp_Lý × 0.30)
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+            <!-- Trụ cột 1 -->
+            <div class="p-5 rounded-2xl bg-[#070e21] border border-slate-800 space-y-2.5">
+              <div class="font-bold text-sky-400 text-sm">Trụ cột 1: Độ An toàn (40%)</div>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Đánh giá các chứng chỉ số <b>TLS 1.3 / HTTPS</b>, độ uy tín của cơ quan cấp phép (CA), kiểm tra cấu hình bản ghi DNS, IP máy chủ và tuổi thọ tên miền để ngăn ngừa các chiến dịch lừa đảo mới dựng.
+              </p>
+            </div>
+
+            <!-- Trụ cột 2 -->
+            <div class="p-5 rounded-2xl bg-[#070e21] border border-slate-800 space-y-2.5">
+              <div class="font-bold text-sky-400 text-sm">Trụ cột 2: Tính Minh bạch (30%)</div>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Bóc tách ngữ nghĩa nội dung thực tế: kiểm tra định danh chủ thể sở hữu, thông tin doanh nghiệp, chính sách hoàn tiền, và phát hiện các bẫy phí ẩn hoặc bài viết dẫn dụ sai lệch.
+              </p>
+            </div>
+
+            <!-- Trụ cột 3 -->
+            <div class="p-5 rounded-2xl bg-[#070e21] border border-slate-800 space-y-2.5">
+              <div class="font-bold text-sky-400 text-sm">Trụ cột 3: Tuân thủ Pháp lý (30%)</div>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Rà soát các điều khoản dịch vụ (ToS), quy trình bảo vệ dữ liệu cá nhân theo <b>Nghị định 13/2023/NĐ-CP</b>, <b>Luật An ninh mạng 2018</b> và các tiêu chuẩn bảo mật quốc tế (GDPR).
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cơ chế Chốt chặn vi phạm nghiêm trọng (Penalty Gate) -->
+        <div class="p-6 sm:p-8 rounded-3xl bg-[#0b1329]/80 border border-red-500/30 shadow-xl space-y-4 backdrop-blur-xl">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-white">2. Cơ chế Chốt Chặn Vi Phạm Nghiêm Trọng (Penalty Gate)</h2>
+              <p class="text-xs text-red-300">Nguyên tắc bảo vệ tuyệt đối: Điểm số kỹ thuật KHÔNG THỂ cứu vớt hành vi phạm pháp.</p>
+            </div>
+          </div>
+
+          <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            Nhiều website cờ bạc trực tuyến (như M88, Bet88...) hoặc trang lừa đảo đầu tư mua chứng chỉ SSL cao cấp để che đậy. 
+            Khi Verity phát hiện <b>NỘI DUNG THỰC TẾ</b> tổ chức cá cược, sòng bạc hoặc bẫy lừa đảo:
+          </p>
+
+          <div class="p-4 rounded-xl bg-red-950/40 border border-red-800/60 text-xs sm:text-sm text-red-200 space-y-1.5">
+            <div>• <b>Vi phạm:</b> Điều 321, 322 Bộ luật Hình sự Việt Nam & Điều 8 Luật An ninh mạng 2018.</div>
+            <div>• <b>Hành động hệ thống:</b> Penalty Gate tự động kích hoạt, <b>khóa điểm ngay lập tức về mức 10/100 (Báo động Đỏ)</b>, bỏ qua mọi điểm cộng kỹ thuật.</div>
+          </div>
+        </div>
+
+        <!-- Nút chuyển sang tab Quét -->
+        <div class="pt-2 flex justify-center">
+          <button
+            type="button"
+            onclick="switchTab('scanner')"
+            class="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm shadow-[0_0_20px_rgba(37,99,235,0.4)] smooth-interactive flex items-center gap-2 cursor-pointer"
+          >
+            <span>Trải nghiệm Thẩm định Ngay</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </section>
 
     </main>
 
     <!-- ===== FOOTER ===== -->
-    <footer class="border-t border-slate-800 bg-slate-950 py-6 text-xs text-slate-500 relative z-10">
-      <div class="max-w-6xl mx-auto px-4 sm:px-8 flex flex-wrap items-center justify-between gap-4">
+    <footer class="border-t border-slate-800/80 bg-[#030712] py-6 text-xs text-slate-400 relative z-10">
+      <div class="max-w-7xl mx-auto px-4 sm:px-8 flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-          <span class="font-bold text-slate-300">Verity</span>
-          <span>— Nền tảng Thẩm định An toàn & Minh bạch</span>
+          <span class="font-display font-bold text-white">Verity</span>
+          <span>— Nền tảng Thẩm định An toàn, Minh bạch & Tuân thủ Pháp lý</span>
         </div>
         <div class="flex items-center gap-4 text-[11px]">
-          <span>Kiến trúc Client-Server</span>
+          <span>Kiến trúc Client - Server</span>
           <span>•</span>
           <span>Nghị định 13/2023/NĐ-CP</span>
           <span>•</span>
-          <span>API key bảo mật ở Backend</span>
+          <span>Điều 321, 322 Bộ luật Hình sự</span>
         </div>
       </div>
     </footer>
 
-    <!-- ===== Tailwind custom classes via style (quick chips) ===== -->
-    <style>
-      .quick-chip {
-        padding: 1px 7px;
-        border-radius: 4px;
-        background: rgba(30,41,59,.8);
-        border: 1px solid rgba(71,85,105,.6);
-        color: #cbd5e1;
-        font-family: monospace;
-        font-size: 10px;
-        transition: all .15s;
-        cursor: pointer;
-      }
-      .quick-chip:hover {
-        background: rgba(51,65,85,1);
-        color: #fff;
-      }
-    </style>
-
-    <!-- ===== JAVASCRIPT ===== -->
+    <!-- ===== JAVASCRIPT LOGIC ===== -->
     <script>
-      // ── Canvas particle network ──────────────────────────────────────────
+      // ── Tab Switching Logic ────────────────────────────────────────────────
+      function switchTab(tabId) {
+        const tabs = ['intro', 'scanner', 'explanation'];
+
+        tabs.forEach(t => {
+          const view = document.getElementById('view-' + t);
+          const btn = document.getElementById('tab-btn-' + t);
+
+          if (t === tabId) {
+            view.classList.remove('hidden');
+            btn.className = 'flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold smooth-interactive cursor-pointer bg-blue-600 text-white shadow-md shadow-blue-900/50';
+          } else {
+            view.classList.add('hidden');
+            btn.className = 'flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold smooth-interactive cursor-pointer text-slate-300 hover:text-white hover:bg-slate-800/60';
+          }
+        });
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      // ── Background Particle Canvas ─────────────────────────────────────────
       (function () {
         const canvas = document.getElementById('bgCanvas');
         const ctx = canvas.getContext('2d');
         let W, H, particles = [];
-        const N = 55;
+        const N = 40;
 
         function resize() {
           W = canvas.width  = window.innerWidth;
@@ -469,30 +815,29 @@
         resize();
         window.addEventListener('resize', resize);
 
-        function randBetween(a, b) { return a + Math.random() * (b - a); }
+        function rand(a, b) { return a + Math.random() * (b - a); }
 
         for (let i = 0; i < N; i++) {
           particles.push({
-            x: randBetween(0, window.innerWidth),
-            y: randBetween(0, window.innerHeight),
-            vx: randBetween(-0.3, 0.3),
-            vy: randBetween(-0.3, 0.3),
-            r: randBetween(1, 2.5),
-            color: ['#06b6d4','#3b82f6','#818cf8'][Math.floor(Math.random()*3)],
+            x: rand(0, window.innerWidth),
+            y: rand(0, window.innerHeight),
+            vx: rand(-0.25, 0.25),
+            vy: rand(-0.25, 0.25),
+            r: rand(1, 2),
+            color: '#38bdf8'
           });
         }
 
         function draw() {
           ctx.clearRect(0, 0, W, H);
-          // connections
           for (let i = 0; i < N; i++) {
             for (let j = i + 1; j < N; j++) {
               const dx = particles[i].x - particles[j].x;
               const dy = particles[i].y - particles[j].y;
-              const d = Math.sqrt(dx*dx + dy*dy);
-              if (d < 150) {
+              const d = Math.sqrt(dx * dx + dy * dy);
+              if (d < 140) {
                 ctx.beginPath();
-                ctx.strokeStyle = `rgba(6,182,212,${(1 - d/150) * 0.18})`;
+                ctx.strokeStyle = `rgba(56, 189, 248, ${(1 - d / 140) * 0.12})`;
                 ctx.lineWidth = 0.6;
                 ctx.moveTo(particles[i].x, particles[i].y);
                 ctx.lineTo(particles[j].x, particles[j].y);
@@ -500,7 +845,6 @@
               }
             }
           }
-          // dots
           particles.forEach(p => {
             p.x += p.vx; p.y += p.vy;
             if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
@@ -508,7 +852,7 @@
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
             ctx.fillStyle = p.color;
-            ctx.globalAlpha = 0.55;
+            ctx.globalAlpha = 0.45;
             ctx.fill();
             ctx.globalAlpha = 1;
           });
@@ -517,9 +861,9 @@
         draw();
       })();
 
-      // ── Helpers ──────────────────────────────────────────────────────────
-      function setUrl(domain) {
-        document.getElementById('url-input').value = domain;
+      // ── Scanner Form Helpers ──────────────────────────────────────────────
+      function setUrl(url) {
+        document.getElementById('url-input').value = url;
       }
 
       function showError(msg) {
@@ -535,141 +879,141 @@
         el.classList.remove('flex');
       }
 
-      function setLoading(on) {
-        const btn    = document.getElementById('submit-btn');
-        const laser  = document.getElementById('laser-curtain');
-        const hud    = document.getElementById('hud-header');
-        const box    = document.getElementById('scanner-section');
+      function setLoading(isLoading) {
+        const btn   = document.getElementById('submit-btn');
+        const laser = document.getElementById('laser-curtain');
+        const hud   = document.getElementById('hud-header');
+        const box   = document.getElementById('scanner-box');
 
-        if (on) {
+        if (isLoading) {
           btn.disabled = true;
           btn.innerHTML = `
-            <div class="relative w-4 h-4">
-              <div class="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-            <span class="font-mono">Đang phân tích...</span>`;
-          btn.className = btn.className.replace('from-blue-600 via-indigo-600 to-cyan-500', 'from-slate-800 to-slate-800').replace('hover:from-blue-500 hover:to-cyan-400', '');
+            <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            <span class="font-mono">Đang thẩm định...</span>
+          `;
+          btn.className = 'px-7 py-3.5 rounded-xl bg-slate-800 text-slate-300 text-xs sm:text-sm font-bold border border-slate-700 cursor-wait flex items-center gap-2.5';
           laser.classList.remove('hidden');
           hud.classList.remove('hidden');
-          box.classList.add('animate-pulse-glow', 'border-cyan-500/80');
-          box.classList.remove('border-slate-700/80');
+          box.classList.add('border-sky-400');
+          box.classList.remove('border-slate-800/90');
         } else {
           btn.disabled = false;
           btn.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-cyan-200 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            Phân tích Minh bạch Ngay`;
-          btn.className = 'px-7 py-3 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2.5 cursor-pointer shadow-lg active:scale-95 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white shadow-blue-600/30 hover:shadow-cyan-500/30 hover:-translate-y-0.5';
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>Phân tích Minh bạch Ngay</span>
+          `;
+          btn.className = 'px-7 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:shadow-[0_0_25px_rgba(56,189,248,0.5)] smooth-interactive flex items-center gap-2.5 cursor-pointer active:scale-95';
           laser.classList.add('hidden');
           hud.classList.add('hidden');
-          box.classList.remove('animate-pulse-glow', 'border-cyan-500/80');
-          box.classList.add('border-slate-700/80');
+          box.classList.remove('border-sky-400');
+          box.classList.add('border-slate-800/90');
         }
       }
 
-      function resetForm() {
+      function resetScanner() {
         document.getElementById('result-section').classList.add('hidden');
-        document.getElementById('how-it-works').classList.remove('hidden');
         document.getElementById('url-input').value = '';
         hideError();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
-      // ── Render result ────────────────────────────────────────────────────
+      // ── Render Result Logic ────────────────────────────────────────────────
       function renderResult(data) {
-        const score    = Math.max(0, Math.min(100, Math.round(data.trust_score)));
-        const status   = (data.status || '').toLowerCase();
-        const isGreen  = status === 'safe';
-        const isYellow = status === 'warning';
-        const isRed    = status === 'dangerous';
+        const score = Math.max(0, Math.min(100, Math.round(data.trust_score)));
+        const status = (data.status || '').toLowerCase();
+        const isSafe = status === 'safe';
+        const isWarning = status === 'warning';
+        const isDangerous = status === 'dangerous';
 
-        // Color schemes
-        const colorScheme = isGreen
-          ? { ring: '#10b981', badge: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300', dot: 'bg-emerald-400', card: 'border-emerald-500/25', label: 'An toàn ✓' }
-          : isYellow
-          ? { ring: '#f59e0b', badge: 'bg-amber-500/15 border-amber-500/40 text-amber-300', dot: 'bg-amber-400', card: 'border-amber-500/25', label: 'Cảnh báo ⚠' }
-          : { ring: '#ef4444', badge: 'bg-red-500/15 border-red-500/40 text-red-300', dot: 'bg-red-400', card: 'border-red-500/25', label: 'Nguy hiểm ✗' };
+        let colorRing = '#10b981';
+        let badgeClass = 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300';
+        let dotColor = '#10b981';
+        let statusLabel = 'An toàn ✓';
 
-        // Card border
-        const card = document.getElementById('result-card');
-        card.className = card.className.replace(/border-\S+/g, '').trim();
-        card.classList.add(colorScheme.card, 'bg-slate-900/95');
+        if (isWarning) {
+          colorRing = '#f59e0b';
+          badgeClass = 'bg-amber-500/15 border-amber-500/40 text-amber-300';
+          dotColor = '#f59e0b';
+          statusLabel = 'Cảnh báo ⚠️';
+        } else if (isDangerous) {
+          colorRing = '#ef4444';
+          badgeClass = 'bg-red-500/15 border-red-500/40 text-red-300';
+          dotColor = '#ef4444';
+          statusLabel = 'Nguy hiểm / Bị cấm ✗';
+        }
 
-        // Score ring: circumference = 2π×57 ≈ 358
-        const offset = 358 - (score / 100) * 358;
+        // SVG ring calculation: 2 * PI * 60 ≈ 377
+        const offset = 377 - (score / 100) * 377;
         const ring = document.getElementById('score-ring');
-        ring.style.stroke = colorScheme.ring;
+        ring.style.stroke = colorRing;
         setTimeout(() => { ring.style.strokeDashoffset = offset; }, 50);
 
-        // Animate score number
-        let curr = 0;
-        const target = score;
-        const step = Math.ceil(target / 40);
+        // Counter animation
+        let current = 0;
         const scoreEl = document.getElementById('score-num');
-        const counter = setInterval(() => {
-          curr = Math.min(curr + step, target);
-          scoreEl.textContent = curr;
-          if (curr >= target) clearInterval(counter);
+        const interval = setInterval(() => {
+          current = Math.min(current + Math.ceil(score / 35), score);
+          scoreEl.textContent = current;
+          if (current >= score) clearInterval(interval);
         }, 20);
 
-        // Status badge
-        document.getElementById('status-badge').className =
-          `inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold border ${colorScheme.badge}`;
-        document.getElementById('status-dot').className = `w-2 h-2 rounded-full animate-pulse ${colorScheme.dot}`;
-        document.getElementById('status-text').textContent = colorScheme.label;
+        // Badge trạng thái
+        const badge = document.getElementById('status-badge');
+        badge.className = `inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold border ${badgeClass}`;
+        document.getElementById('status-dot').style.backgroundColor = dotColor;
+        document.getElementById('status-text').textContent = statusLabel;
 
-        // Summary
+        // Nội dung tóm tắt, URL & Động cơ
         document.getElementById('summary-text').textContent = data.summary || 'Không có tóm tắt.';
         document.getElementById('analyzed-url-display').textContent = '🔗 ' + (data.analyzed_url || '');
+        document.getElementById('engine-display').textContent = '⚡ Động cơ: ' + (data.analysis_engine || 'Google Gemini AI (gemini-3.5-flash-lite)');
 
-        // Red flags
-        const flagsEl = document.getElementById('red-flags-list');
-        const flagsSec = document.getElementById('red-flags-section');
+        // Red Flags
+        const redFlagsSection = document.getElementById('red-flags-section');
+        const redFlagsList = document.getElementById('red-flags-list');
         if (data.red_flags && data.red_flags.length > 0) {
-          flagsSec.classList.remove('hidden');
-          flagsEl.innerHTML = data.red_flags.map(f =>
-            `<div class="flex items-start gap-2 p-3 rounded-xl bg-red-500/8 border border-red-500/20 text-xs text-red-300 leading-relaxed">
-               <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0 mt-0.5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-               ${escHtml(f)}
-             </div>`
-          ).join('');
+          redFlagsSection.classList.remove('hidden');
+          redFlagsList.innerHTML = data.red_flags.map(flag => `
+            <div class="flex items-start gap-2.5 p-3 rounded-xl bg-red-950/30 border border-red-500/30 text-xs text-red-200 leading-relaxed">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0 text-red-400 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <span>${escapeHtml(flag)}</span>
+            </div>
+          `).join('');
         } else {
-          flagsSec.classList.add('hidden');
+          redFlagsSection.classList.add('hidden');
         }
 
         // Recommendations
-        const recsEl = document.getElementById('recommendations-list');
-        const recsSec = document.getElementById('recommendations-section');
+        const recSection = document.getElementById('recommendations-section');
+        const recList = document.getElementById('recommendations-list');
         if (data.recommendations && data.recommendations.length > 0) {
-          recsSec.classList.remove('hidden');
-          recsEl.innerHTML = data.recommendations.map(r =>
-            `<div class="flex items-start gap-2 p-3 rounded-xl bg-emerald-500/8 border border-emerald-500/20 text-xs text-emerald-300 leading-relaxed">
-               <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0 mt-0.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-               ${escHtml(r)}
-             </div>`
-          ).join('');
+          recSection.classList.remove('hidden');
+          recList.innerHTML = data.recommendations.map(rec => `
+            <div class="flex items-start gap-2.5 p-3 rounded-xl bg-blue-950/30 border border-sky-400/30 text-xs text-slate-200 leading-relaxed">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0 text-sky-400 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              <span>${escapeHtml(rec)}</span>
+            </div>
+          `).join('');
         } else {
-          recsSec.classList.add('hidden');
+          recSection.classList.add('hidden');
         }
 
-        // Show result, hide how-it-works
+        // Show result section & scroll smooth
         document.getElementById('result-section').classList.remove('hidden');
-        document.getElementById('how-it-works').classList.add('hidden');
-
-        // Smooth scroll
         setTimeout(() => {
           document.getElementById('result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 80);
+        }, 100);
       }
 
-      function escHtml(str) {
-        return String(str)
+      function escapeHtml(text) {
+        return String(text)
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;');
       }
 
-      // ── Form submit ──────────────────────────────────────────────────────
+      // ── Form Submit Handler ────────────────────────────────────────────────
       document.getElementById('analyze-form').addEventListener('submit', async function (e) {
         e.preventDefault();
         hideError();
@@ -682,19 +1026,18 @@
 
         setLoading(true);
 
-        // Animate steps
         const phases = [
-          'Đang tải nội dung trang web...',
-          'Đang lọc và xử lý nội dung HTML...',
-          'Đang gọi Gemini AI phân tích...',
-          'Đang tổng hợp báo cáo minh bạch...',
+          'Đang tải và trích xuất nội dung văn bản từ trang web...',
+          'Đang rà soát từ khóa và các liên kết hoạt động...',
+          'Đang đưa nội dung vào Gemini AI phân tích ngữ nghĩa...',
+          'Đang đối chiếu quy định pháp luật và cấp Báo cáo...',
         ];
         let phaseIdx = 0;
         const phaseEl = document.getElementById('hud-phase');
         const phaseInterval = setInterval(() => {
           phaseIdx = (phaseIdx + 1) % phases.length;
           phaseEl.textContent = phases[phaseIdx];
-        }, 1800);
+        }, 1500);
 
         try {
           const response = await fetch('/api/analyze', {
@@ -708,7 +1051,7 @@
 
           if (!response.ok) {
             const err = await response.json().catch(() => ({}));
-            showError(err.message || `Lỗi server ${response.status}. Vui lòng thử lại.`);
+            showError(err.message || `Lỗi máy chủ (${response.status}). Vui lòng thử lại.`);
             return;
           }
 
@@ -718,13 +1061,10 @@
         } catch (err) {
           clearInterval(phaseInterval);
           setLoading(false);
-          showError('Không thể kết nối đến server. Hãy đảm bảo server đang chạy (bun run dev).');
-          console.error('[Analyze error]', err);
+          showError('Không thể kết nối đến máy chủ. Hãy đảm bảo server đang chạy (npm run dev).');
+          console.error('[Analyze error]:', err);
         }
       });
     </script>
-
-    <!-- React app entry (chỉ chạy khi có Vite dev server) -->
-    <script type="module" src="/src/main.tsx" onerror="/* ignore — standalone mode */"></script>
   </body>
 </html>

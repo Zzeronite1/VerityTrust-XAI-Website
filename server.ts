@@ -2078,9 +2078,14 @@ ${pageContent}`;
     // Thử gọi Gemini AI
     const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-3.8-flash'];
     let aiResponse: any = null;
+    let successfulModel = '';
+
+    console.log(`[Audit Engine] Bắt đầu thẩm định cho URL: ${targetUrl}`);
+    console.log(`[Audit Engine] Tiêu đề cào được: "${pageTitle || 'N/A'}" (${pageContent.length} ký tự văn bản)`);
 
     for (const modelName of modelsToTry) {
       try {
+        console.log(`[Gemini AI] Đang gửi nội dung tới Google Gemini (${modelName})...`);
         aiResponse = await ai.models.generateContent({
           model: modelName,
           contents: userPrompt,
@@ -2091,10 +2096,12 @@ ${pageContent}`;
           },
         });
         if (aiResponse && aiResponse.text) {
+          successfulModel = modelName;
+          console.log(`[Gemini AI] ✅ Phân tích THÀNH CÔNG từ ${modelName}!`);
           break;
         }
       } catch (err: any) {
-        console.warn(`[Model ${modelName} notice]:`, err?.message || err);
+        console.warn(`[Gemini AI] ⚠️ Model ${modelName} gặp lỗi:`, err?.message || err);
       }
     }
 
@@ -2103,9 +2110,11 @@ ${pageContent}`;
     if (aiResponse && aiResponse.text) {
       try {
         result = JSON.parse(aiResponse.text);
+        result.analysis_engine = `Google Gemini AI (${successfulModel})`;
       } catch {
         const cleaned = aiResponse.text.replace(/```json\n?|```/g, '').trim();
         result = JSON.parse(cleaned);
+        result.analysis_engine = `Google Gemini AI (${successfulModel})`;
       }
     }
 
@@ -2124,6 +2133,7 @@ ${pageContent}`;
       result = {
         trust_score: 10,
         status: 'Dangerous',
+        analysis_engine: result?.analysis_engine ? `${result.analysis_engine} + Chốt chặn Pháp lý (Penalty Gate)` : 'Hệ thống Thẩm định An ninh mạng (Penalty Gate)',
         summary: `NGUY HIỂM / VI PHẠM PHÁP LUẬT: Qua phân tích nội dung thực tế từ trang web ("${pageTitle || hostname}"), hệ thống phát hiện website này đang tổ chức và quảng bá các dịch vụ cá cược, sòng bài trực tuyến (casino) hoặc trò chơi đổi thưởng tiền thật. Đây là các hành vi bị nghiêm cấm theo quy định pháp luật Việt Nam.`,
         red_flags: [
           `Nội dung trang chứa các hoạt động cờ bạc, cá cược: "${(pageTitle || pageDescription || 'Dịch vụ cá độ/casino').slice(0, 100)}..."`,
@@ -2149,6 +2159,7 @@ ${pageContent}`;
         result = {
           trust_score: 95,
           status: 'Safe',
+          analysis_engine: 'Verity Security Engine (Heuristic Fallback)',
           summary: `Website "${hostname}" thuộc danh mục đơn vị uy tín đã được xác thực danh tính số, sở hữu hạ tầng kết nối an toàn và minh bạch theo quy chuẩn an toàn mạng.`,
           red_flags: [],
           recommendations: [
