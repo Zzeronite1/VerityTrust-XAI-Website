@@ -41,6 +41,113 @@ const ai = new GoogleGenAI({
   },
 });
 
+/**
+ * ============================================================================
+ * CẤU HÌNH & XỬ LÝ LỖI GEMINI API NÂNG CAO (RESILIENT AI PIPELINE)
+ * ============================================================================
+ * 1. Thứ tự ưu tiên Model:
+ *    - Primary:   gemini-3.8-flash (Chịu tải cao, quota rộng, ổn định nhất)
+ *    - Secondary: gemini-2.5-flash (Dự phòng chuẩn flash nếu model chính gặp sự cố)
+ *    - Fallback:  gemini-3.5-flash-lite (Dòng -lite chuyển xuống cuối cùng do dễ 503)
+ */
+const GEMINI_MODELS_CASCADE: string[] = [
+  'gemini-3.8-flash',
+  'gemini-2.5-flash',
+  'gemini-3.5-flash-lite',
+];
+
+/**
+ * Kiểm tra xem lỗi trả về có phải là lỗi tạm thời (503 High Demand, 429 Rate Limit)
+ * có thể khắc phục bằng cách thử lại với Exponential Backoff hay không.
+ */
+function isRetryableGeminiError(error: any): boolean {
+  if (!error) return false;
+  const status = error?.status || error?.code || error?.error?.code || error?.error?.status;
+  const message = String(error?.message || error?.error?.message || error || '').toLowerCase();
+
+  return (
+    status === 503 ||
+    status === 'UNAVAILABLE' ||
+    status === 429 ||
+    status === 'RESOURCE_EXHAUSTED' ||
+    message.includes('503') ||
+    message.includes('high demand') ||
+    message.includes('unavailable') ||
+    message.includes('temporarily') ||
+    message.includes('rate limit') ||
+    message.includes('resource exhausted') ||
+    message.includes('spikes in demand')
+  );
+}
+
+/**
+ * Hàm gọi Gemini AI với cơ chế:
+ * 1. Tự động thử lại (Retry with Exponential Backoff + Jitter) khi gặp 503 / High Demand
+ * 2. Cascading Fallback chuyển model mượt mà không làm crash server hay gián đoạn UI
+ */
+async function generateGeminiWithRetryAndFallback(options: {
+  contents: any;
+  systemInstruction?: string;
+  responseMimeType?: string;
+  temperature?: number;
+  models?: string[];
+  maxRetries?: number;
+  initialDelayMs?: number;
+}): Promise<{ text: string; modelName: string } | null> {
+  const models = options.models || GEMINI_MODELS_CASCADE;
+  const maxRetries = options.maxRetries ?? 2; // Tối đa 2-3 lần retry cho mỗi model
+  const initialDelayMs = options.initialDelayMs ?? 1200; // Delay ban đầu 1.2s
+
+  for (const modelName of models) {
+    let currentDelay = initialDelayMs;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt === 0) {
+          console.log(`[Gemini AI] Đang gửi yêu cầu tới model: ${modelName}...`);
+        } else {
+          console.log(`[Gemini AI] 🔄 Thử lại lần ${attempt}/${maxRetries} với model: ${modelName}...`);
+        }
+
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: options.contents,
+          config: {
+            systemInstruction: options.systemInstruction,
+            temperature: options.temperature ?? 0.2,
+            responseMimeType: (options.responseMimeType as any) || 'application/json',
+          },
+        });
+
+        if (response && response.text) {
+          console.log(`[Gemini AI] ✅ Phân tích THÀNH CÔNG từ ${modelName}!`);
+          return { text: response.text, modelName };
+        }
+      } catch (err: any) {
+        const errorMsg = err?.message || err?.error?.message || String(err);
+        const retryable = isRetryableGeminiError(err);
+
+        if (retryable && attempt < maxRetries) {
+          // Thêm ngẫu nhiên một khoảng jitter để phân tán các request đồng thời
+          const jitter = Math.floor(Math.random() * 300);
+          const waitTime = currentDelay + jitter;
+          console.warn(`[Gemini AI] ⚠️ Model ${modelName} gặp lỗi 503 (High Demand). Đang chờ ${waitTime}ms trước khi thử lại...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          currentDelay *= 2; // Tăng dần thời gian chờ sau mỗi lần thất bại (Exponential Backoff)
+        } else {
+          console.warn(`[Gemini AI] ⚠️ Model ${modelName} không thể hoàn thành (đã thử ${attempt + 1}/${maxRetries + 1}): ${errorMsg}`);
+          break; // Model này đã kiệt sức hoặc gặp lỗi không thể retry, chuyển sang model tiếp theo
+        }
+      }
+    }
+
+    console.log(`[Gemini AI] ⏩ Đang tự động chuyển sang model dự phòng kế tiếp trong danh sách...`);
+  }
+
+  console.error(`[Gemini AI] ❌ Tất cả các model trong danh sách fallback đều không phản hồi.`);
+  return null;
+}
+
 interface ScanRequest {
   targetType: 'url' | 'document' | 'text' | 'image';
   targetValue: string;
@@ -1732,33 +1839,23 @@ Return strictly valid JSON conforming to this schema without markdown formatting
 
     let parsedReport: any = null;
 
-    // Primary model for deep inference: gemini-3.8-flash
-    const modelsToTry = ['gemini-3.8-flash'];
-    for (const modelName of modelsToTry) {
+    // Gọi Gemini AI với cơ chế: Tự động retry exponential backoff khi gặp 503 + Cascading fallback
+    const aiExecution = await generateGeminiWithRetryAndFallback({
+      contents: contentsPayload,
+      systemInstruction: systemPrompt,
+      responseMimeType: 'application/json',
+      temperature: 0.2,
+      maxRetries: 2,
+      initialDelayMs: 1200,
+    });
+
+    if (aiExecution && aiExecution.text) {
+      const responseText = aiExecution.text || '{}';
       try {
-        const aiResponse = await ai.models.generateContent({
-          model: modelName,
-          contents: contentsPayload,
-          config: {
-            systemInstruction: systemPrompt,
-            temperature: 0.2,
-            responseMimeType: 'application/json',
-          },
-        });
-
-        const responseText = aiResponse.text || '{}';
-        try {
-          parsedReport = JSON.parse(responseText);
-        } catch {
-          const cleaned = responseText.replace(/```json\n?|```/g, '').trim();
-          parsedReport = JSON.parse(cleaned);
-        }
-
-        if (parsedReport && parsedReport.trustScore !== undefined) {
-          break;
-        }
-      } catch (geminiError: any) {
-        console.warn(`Model ${modelName} encountered an error:`, geminiError?.message || geminiError);
+        parsedReport = JSON.parse(responseText);
+      } catch {
+        const cleaned = responseText.replace(/```json\n?|```/g, '').trim();
+        parsedReport = JSON.parse(cleaned);
       }
     }
 
@@ -2092,44 +2189,29 @@ MÔ TẢ TRANG (META DESCRIPTION): ${pageDescription || 'Không có'}
 NỘI DUNG VĂN BẢN ĐỌC ĐƯỢC TỪ TRANG WEB:
 ${pageContent}`;
 
-    // Thử gọi Gemini AI
-    const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-3.8-flash'];
-    let aiResponse: any = null;
-    let successfulModel = '';
-
     console.log(`[Audit Engine] Bắt đầu thẩm định cho URL: ${targetUrl}`);
     console.log(`[Audit Engine] Tiêu đề cào được: "${pageTitle || 'N/A'}" (${pageContent.length} ký tự văn bản)`);
 
-    for (const modelName of modelsToTry) {
-      try {
-        console.log(`[Gemini AI] Đang gửi nội dung tới Google Gemini (${modelName})...`);
-        aiResponse = await ai.models.generateContent({
-          model: modelName,
-          contents: userPrompt,
-          config: {
-            systemInstruction: systemPrompt,
-            temperature: 0.2,
-            responseMimeType: 'application/json',
-          },
-        });
-        if (aiResponse && aiResponse.text) {
-          successfulModel = modelName;
-          console.log(`[Gemini AI] ✅ Phân tích THÀNH CÔNG từ ${modelName}!`);
-          break;
-        }
-      } catch (err: any) {
-        console.warn(`[Gemini AI] ⚠️ Model ${modelName} gặp lỗi:`, err?.message || err);
-      }
-    }
+    // Gọi Gemini AI với cơ chế: Tự động retry exponential backoff khi gặp 503 + Cascading fallback
+    const aiExecution = await generateGeminiWithRetryAndFallback({
+      contents: userPrompt,
+      systemInstruction: systemPrompt,
+      responseMimeType: 'application/json',
+      temperature: 0.2,
+      maxRetries: 2,
+      initialDelayMs: 1200,
+    });
 
     let result: any = null;
+    let successfulModel = '';
 
-    if (aiResponse && aiResponse.text) {
+    if (aiExecution && aiExecution.text) {
+      successfulModel = aiExecution.modelName;
       try {
-        result = JSON.parse(aiResponse.text);
+        result = JSON.parse(aiExecution.text);
         result.analysis_engine = `Google Gemini AI (${successfulModel})`;
       } catch {
-        const cleaned = aiResponse.text.replace(/```json\n?|```/g, '').trim();
+        const cleaned = aiExecution.text.replace(/```json\n?|```/g, '').trim();
         result = JSON.parse(cleaned);
         result.analysis_engine = `Google Gemini AI (${successfulModel})`;
       }
