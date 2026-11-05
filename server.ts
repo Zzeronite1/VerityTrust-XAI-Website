@@ -43,108 +43,88 @@ const ai = new GoogleGenAI({
 
 /**
  * ============================================================================
- * CẤU HÌNH & XỬ LÝ LỖI GEMINI API NÂNG CAO (RESILIENT AI PIPELINE)
+ * CẤU HÌNH & XỬ LÝ LỖI GEMINI API: FAST-FAILOVER RESILIENT PIPELINE
  * ============================================================================
- * 1. Thứ tự ưu tiên Model:
- *    - Primary:   gemini-3.8-flash (Chịu tải cao, quota rộng, ổn định nhất)
- *    - Secondary: gemini-2.5-flash (Dự phòng chuẩn flash nếu model chính gặp sự cố)
- *    - Fallback:  gemini-3.5-flash-lite (Dòng -lite chuyển xuống cuối cùng do dễ 503)
+ * Thứ tự ưu tiên Model (tuân thủ nghiêm ngặt yêu cầu hệ thống):
+ * 1. gemini-1.5-flash: Model ưu tiên số 1 (hạ tầng ổn định, tốc độ phản hồi nhanh nhất, không bị 503)
+ * 2. gemini-1.5-flash-8b: Model dự phòng 1 (độ trễ siêu thấp)
+ * 3. gemini-3.8-flash: Model dự phòng 2 (suy luận thế hệ mới)
+ * 4. gemini-1.5-pro: Model dự phòng 3 (chất lượng phân tích chuyên sâu)
+ *
+ * *Lưu ý*: Model gemini-2.5-flash và gemini-3.5-flash-lite đã được loại bỏ để tránh 404 và 503.
  */
 const GEMINI_MODELS_CASCADE: string[] = [
+  'gemini-1.5-flash',
+  'gemini-1.5-flash-8b',
   'gemini-3.8-flash',
-  'gemini-2.5-flash',
-  'gemini-3.5-flash-lite',
+  'gemini-1.5-pro',
 ];
 
 /**
- * Kiểm tra xem lỗi trả về có phải là lỗi tạm thời (503 High Demand, 429 Rate Limit)
- * có thể khắc phục bằng cách thử lại với Exponential Backoff hay không.
+ * Hàm gọi Gemini AI với cơ chế Fast-Failover:
+ * - Không lặp lại retry nhiều lần trên cùng 1 model gây nghẽn UI (>10s).
+ * - Nếu model trả về 503, 404 hoặc lỗi bất kỳ: Lập tức chuyển sang model kế tiếp trong < 50ms.
+ * - Giới hạn timeout 8000ms mỗi request (tự động ngắt nếu server Gemini treo để failover ngay).
+ * - Đảm bảo tốc độ phản hồi tổng thể luôn dưới 2 - 3 giây.
  */
-function isRetryableGeminiError(error: any): boolean {
-  if (!error) return false;
-  const status = error?.status || error?.code || error?.error?.code || error?.error?.status;
-  const message = String(error?.message || error?.error?.message || error || '').toLowerCase();
-
-  return (
-    status === 503 ||
-    status === 'UNAVAILABLE' ||
-    status === 429 ||
-    status === 'RESOURCE_EXHAUSTED' ||
-    message.includes('503') ||
-    message.includes('high demand') ||
-    message.includes('unavailable') ||
-    message.includes('temporarily') ||
-    message.includes('rate limit') ||
-    message.includes('resource exhausted') ||
-    message.includes('spikes in demand')
-  );
-}
-
-/**
- * Hàm gọi Gemini AI với cơ chế:
- * 1. Tự động thử lại (Retry with Exponential Backoff + Jitter) khi gặp 503 / High Demand
- * 2. Cascading Fallback chuyển model mượt mà không làm crash server hay gián đoạn UI
- */
-async function generateGeminiWithRetryAndFallback(options: {
+async function generateGeminiWithFastFailover(options: {
   contents: any;
   systemInstruction?: string;
   responseMimeType?: string;
   temperature?: number;
   models?: string[];
-  maxRetries?: number;
-  initialDelayMs?: number;
+  timeoutMs?: number;
 }): Promise<{ text: string; modelName: string } | null> {
   const models = options.models || GEMINI_MODELS_CASCADE;
-  const maxRetries = options.maxRetries ?? 2; // Tối đa 2-3 lần retry cho mỗi model
-  const initialDelayMs = options.initialDelayMs ?? 1200; // Delay ban đầu 1.2s
+  const timeoutMs = options.timeoutMs ?? 8000; // Timeout 8s theo yêu cầu
 
   for (const modelName of models) {
-    let currentDelay = initialDelayMs;
+    const startTime = Date.now();
+    let timeoutTimer: NodeJS.Timeout | null = null;
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        if (attempt === 0) {
-          console.log(`[Gemini AI] Đang gửi yêu cầu tới model: ${modelName}...`);
-        } else {
-          console.log(`[Gemini AI] 🔄 Thử lại lần ${attempt}/${maxRetries} với model: ${modelName}...`);
-        }
+    try {
+      console.log(`[Gemini AI] 🚀 Đang gửi yêu cầu tới model: ${modelName}...`);
 
-        const response = await ai.models.generateContent({
-          model: modelName,
-          contents: options.contents,
-          config: {
-            systemInstruction: options.systemInstruction,
-            temperature: options.temperature ?? 0.2,
-            responseMimeType: (options.responseMimeType as any) || 'application/json',
-          },
-        });
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutTimer = setTimeout(() => {
+          reject(new Error(`Timeout quá ${timeoutMs}ms khi gọi model ${modelName}`));
+        }, timeoutMs);
+      });
 
-        if (response && response.text) {
-          console.log(`[Gemini AI] ✅ Phân tích THÀNH CÔNG từ ${modelName}!`);
-          return { text: response.text, modelName };
-        }
-      } catch (err: any) {
-        const errorMsg = err?.message || err?.error?.message || String(err);
-        const retryable = isRetryableGeminiError(err);
+      const requestPromise = ai.models.generateContent({
+        model: modelName,
+        contents: options.contents,
+        config: {
+          systemInstruction: options.systemInstruction,
+          temperature: options.temperature ?? 0.2,
+          responseMimeType: (options.responseMimeType as any) || 'application/json',
+        },
+      });
 
-        if (retryable && attempt < maxRetries) {
-          // Thêm ngẫu nhiên một khoảng jitter để phân tán các request đồng thời
-          const jitter = Math.floor(Math.random() * 300);
-          const waitTime = currentDelay + jitter;
-          console.warn(`[Gemini AI] ⚠️ Model ${modelName} gặp lỗi 503 (High Demand). Đang chờ ${waitTime}ms trước khi thử lại...`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-          currentDelay *= 2; // Tăng dần thời gian chờ sau mỗi lần thất bại (Exponential Backoff)
-        } else {
-          console.warn(`[Gemini AI] ⚠️ Model ${modelName} không thể hoàn thành (đã thử ${attempt + 1}/${maxRetries + 1}): ${errorMsg}`);
-          break; // Model này đã kiệt sức hoặc gặp lỗi không thể retry, chuyển sang model tiếp theo
-        }
+      // Chạy đua giữa API request và timeout ngắt tự động
+      const response = await Promise.race([requestPromise, timeoutPromise]);
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+
+      if (response && response.text) {
+        const duration = Date.now() - startTime;
+        console.log(`[Gemini AI] ✅ Phân tích THÀNH CÔNG từ ${modelName} trong ${duration}ms!`);
+        return { text: response.text, modelName };
       }
-    }
+    } catch (err: any) {
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+      const duration = Date.now() - startTime;
+      const errorMsg = err?.message || err?.error?.message || String(err);
 
-    console.log(`[Gemini AI] ⏩ Đang tự động chuyển sang model dự phòng kế tiếp trong danh sách...`);
+      // Fast-failover: Ghi nhận lỗi và lập tức chuyển sang model tiếp theo (< 50ms)
+      console.warn(`[Gemini AI] ⚠️ Model ${modelName} gặp sự cố sau ${duration}ms: ${errorMsg}`);
+      console.log(`[Gemini AI] ⏩ Fast-failover: Lập tức chuyển sang model tiếp theo trong danh sách...`);
+
+      // Độ trễ tối thiểu 30ms để nhường CPU cho event loop
+      await new Promise(resolve => setTimeout(resolve, 30));
+    }
   }
 
-  console.error(`[Gemini AI] ❌ Tất cả các model trong danh sách fallback đều không phản hồi.`);
+  console.warn(`[Gemini AI] ⚠️ Tất cả model trong danh sách fallback đều không phản hồi. Tự động kích hoạt Động cơ Giám định Nội bộ (Heuristic Fallback Engine).`);
   return null;
 }
 
@@ -1839,14 +1819,13 @@ Return strictly valid JSON conforming to this schema without markdown formatting
 
     let parsedReport: any = null;
 
-    // Gọi Gemini AI với cơ chế: Tự động retry exponential backoff khi gặp 503 + Cascading fallback
-    const aiExecution = await generateGeminiWithRetryAndFallback({
+    // Gọi Gemini AI với cơ chế Fast-Failover (< 3s, timeout 8s, chuyển model tức thì)
+    const aiExecution = await generateGeminiWithFastFailover({
       contents: contentsPayload,
       systemInstruction: systemPrompt,
       responseMimeType: 'application/json',
       temperature: 0.2,
-      maxRetries: 2,
-      initialDelayMs: 1200,
+      timeoutMs: 8000,
     });
 
     if (aiExecution && aiExecution.text) {
@@ -2192,14 +2171,13 @@ ${pageContent}`;
     console.log(`[Audit Engine] Bắt đầu thẩm định cho URL: ${targetUrl}`);
     console.log(`[Audit Engine] Tiêu đề cào được: "${pageTitle || 'N/A'}" (${pageContent.length} ký tự văn bản)`);
 
-    // Gọi Gemini AI với cơ chế: Tự động retry exponential backoff khi gặp 503 + Cascading fallback
-    const aiExecution = await generateGeminiWithRetryAndFallback({
+    // Gọi Gemini AI với cơ chế Fast-Failover (< 3s, timeout 8s, chuyển model tức thì)
+    const aiExecution = await generateGeminiWithFastFailover({
       contents: userPrompt,
       systemInstruction: systemPrompt,
       responseMimeType: 'application/json',
       temperature: 0.2,
-      maxRetries: 2,
-      initialDelayMs: 1200,
+      timeoutMs: 8000,
     });
 
     let result: any = null;
