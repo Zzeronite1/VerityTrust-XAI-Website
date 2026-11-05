@@ -465,6 +465,46 @@
               </div>
             </div>
 
+            <!-- Grid 2 Khối: Độ tuổi Phù hợp & Chứng chỉ Tiêu chuẩn Số -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              
+              <!-- Khối 1: Đánh giá Độ tuổi Phù hợp -->
+              <div class="p-5 rounded-2xl bg-[#070e21]/90 border border-slate-800/90 space-y-3 hover:border-sky-500/40 smooth-interactive">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Phù hợp Độ tuổi</span>
+                  </div>
+                  <span id="age-rating-badge" class="px-3 py-1 rounded-full text-xs font-bold border">
+                    Đang phân tích
+                  </span>
+                </div>
+                <p id="age-rating-reason" class="text-xs text-slate-300 leading-relaxed"></p>
+              </div>
+
+              <!-- Khối 2: Chứng chỉ & Tiêu chuẩn An toàn -->
+              <div class="p-5 rounded-2xl bg-[#070e21]/90 border border-slate-800/90 space-y-3 hover:border-sky-500/40 smooth-interactive">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                    <span>Chứng chỉ & Nhãn Tín nhiệm</span>
+                  </div>
+                  <span class="text-[10px] text-sky-400 font-mono">Đối soát tự động</span>
+                </div>
+                <div id="certificates-list" class="space-y-2"></div>
+              </div>
+
+            </div>
+
+            <!-- Khối 3: Lưu ý Quan trọng khi Tương tác & Sử dụng Website -->
+            <div id="usage-notes-section" class="space-y-3 pt-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span>Lưu ý Quan trọng khi Sử dụng Trang web</span>
+              </h3>
+              <div id="usage-notes-list" class="space-y-2"></div>
+            </div>
+
             <!-- Red Flags Section (Dấu hiệu rủi ro) -->
             <div id="red-flags-section" class="space-y-3 pt-2">
               <h3 class="text-xs font-bold uppercase tracking-wider text-red-400 flex items-center gap-2">
@@ -483,9 +523,29 @@
               <div id="recommendations-list" class="space-y-2"></div>
             </div>
 
+            <!-- Khối Khẳng định AI Disclaimer (Khẳng định AI đôi khi có sai sót) -->
+            <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-200/90 text-xs flex items-start gap-3 leading-relaxed shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-400 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <div class="space-y-1">
+                <div class="font-bold text-amber-300">Khẳng định Minh bạch & Giới hạn Mô hình AI:</div>
+                <div id="ai-disclaimer-text">
+                  Báo cáo được tổng hợp tự động bởi mô hình Gemini AI kết hợp các thuật toán rà soát an ninh mạng và chốt chặn pháp lý. Mô hình AI đôi khi có thể có sai sót hoặc chưa cập nhật kịp thời các biến động mới nhất của website; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định giao dịch quan trọng.
+                </div>
+              </div>
+            </div>
+
             <!-- Legal disclaimer -->
-            <div class="text-[11px] text-slate-400 border-t border-slate-800 pt-4">
-              <b>Cam kết minh bạch:</b> Báo cáo được tổng hợp bởi Gemini AI dựa trên việc cào nội dung thực tế và đối chiếu với quy định pháp luật Việt Nam. API key được bảo mật 100% tại Backend.
+            <div class="text-[11px] text-slate-400 border-t border-slate-800 pt-4 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <b>Cam kết minh bạch:</b> Cào và thẩm định nội dung thực tế, bảo vệ API key tuyệt đối tại Backend.
+              </div>
+              <div class="text-slate-500 font-mono text-[10px]">
+                Nghị định 13/2023/NĐ-CP • Điều 321, 322 BLHS
+              </div>
             </div>
           </div>
         </div>
@@ -979,7 +1039,77 @@
         document.getElementById('analyzed-url-display').textContent = '🔗 ' + (data.analyzed_url || '');
         document.getElementById('engine-display').textContent = '⚡ Động cơ: ' + (data.analysis_engine || 'Google Gemini AI (gemini-3.5-flash-lite)');
 
-        // Red Flags
+        // 1. Độ tuổi phù hợp (Age Rating)
+        const age = data.age_rating || {};
+        const ageLabel = age.label || (isDangerous ? 'Cấm dưới 18 tuổi / Bất hợp pháp' : 'Mọi lứa tuổi (3+)');
+        const ageReason = age.reason || (isDangerous ? 'Nội dung có biểu hiện vi phạm pháp luật hoặc độc hại, không an toàn cho trẻ vị thành niên.' : 'Nội dung dịch vụ thông thường, có thể truy cập an toàn.');
+        const ageBadge = document.getElementById('age-rating-badge');
+        if (isDangerous || /cấm|18\+/i.test(ageLabel)) {
+          ageBadge.className = 'px-3 py-1 rounded-full text-xs font-bold border bg-red-500/15 border-red-500/40 text-red-300';
+        } else if (isWarning || /13\+/i.test(ageLabel)) {
+          ageBadge.className = 'px-3 py-1 rounded-full text-xs font-bold border bg-amber-500/15 border-amber-500/40 text-amber-300';
+        } else {
+          ageBadge.className = 'px-3 py-1 rounded-full text-xs font-bold border bg-emerald-500/15 border-emerald-500/40 text-emerald-300';
+        }
+        ageBadge.textContent = ageLabel;
+        document.getElementById('age-rating-reason').textContent = ageReason;
+
+        // 2. Chứng chỉ & Tiêu chuẩn An toàn (Certificates)
+        const certsList = document.getElementById('certificates-list');
+        const certs = Array.isArray(data.certificates) && data.certificates.length > 0 ? data.certificates : [];
+        if (certs.length === 0) {
+          certsList.innerHTML = `<p class="text-xs text-slate-400">Chưa ghi nhận chứng chỉ tín nhiệm số chính thức.</p>`;
+        } else {
+          certsList.innerHTML = certs.map(c => {
+            const isCertVerified = (c.status || '').toLowerCase() === 'verified';
+            const isCertWarning = (c.status || '').toLowerCase() === 'warning';
+            const statusClass = isCertVerified 
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' 
+              : isCertWarning 
+              ? 'bg-red-500/10 border-red-500/30 text-red-300' 
+              : 'bg-slate-800/80 border-slate-700 text-slate-300';
+            const statusIcon = isCertVerified
+              ? '<svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+              : isCertWarning
+              ? '<svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-red-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+              : '<svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+
+            return `
+              <div class="p-2.5 rounded-xl border ${statusClass} flex items-start justify-between gap-2 text-xs">
+                <div class="flex items-start gap-2">
+                  <span class="mt-0.5">${statusIcon}</span>
+                  <div>
+                    <div class="font-bold text-white text-xs">${escapeHtml(c.name || 'Chứng chỉ')}</div>
+                    <div class="text-[11px] text-slate-400 leading-tight">${escapeHtml(c.details || '')}</div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        // 3. Lưu ý Quan trọng khi sử dụng (Usage Notes)
+        const notesSection = document.getElementById('usage-notes-section');
+        const notesList = document.getElementById('usage-notes-list');
+        const notes = Array.isArray(data.usage_notes) && data.usage_notes.length > 0 ? data.usage_notes : [];
+        if (notes.length > 0) {
+          notesSection.classList.remove('hidden');
+          notesList.innerHTML = notes.map(note => `
+            <div class="flex items-start gap-2.5 p-3 rounded-xl bg-[#070e21] border border-slate-800 text-xs text-slate-300 leading-relaxed">
+              <span class="text-sky-400 font-bold shrink-0 mt-0.5">💡</span>
+              <span>${escapeHtml(note)}</span>
+            </div>
+          `).join('');
+        } else {
+          notesSection.classList.add('hidden');
+        }
+
+        // 4. Khẳng định AI Disclaimer
+        if (data.ai_disclaimer) {
+          document.getElementById('ai-disclaimer-text').textContent = data.ai_disclaimer;
+        }
+
+        // 5. Red Flags
         const redFlagsSection = document.getElementById('red-flags-section');
         const redFlagsList = document.getElementById('red-flags-list');
         if (data.red_flags && data.red_flags.length > 0) {
@@ -994,7 +1124,7 @@
           redFlagsSection.classList.add('hidden');
         }
 
-        // Recommendations
+        // 6. Recommendations
         const recSection = document.getElementById('recommendations-section');
         const recList = document.getElementById('recommendations-list');
         if (data.recommendations && data.recommendations.length > 0) {

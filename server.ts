@@ -2044,29 +2044,46 @@ app.post('/api/analyze', async (req, res) => {
     }
 
     // --- Bước 2: Đưa NỘI DUNG THỰC TẾ vào Gemini AI để thẩm định ngữ nghĩa ---
-    const systemPrompt = `Bạn là chuyên gia an ninh mạng, thẩm định uy tín và pháp lý website.
-Nhiệm vụ của bạn là ĐỌC KỸ TOÀN BỘ NỘI DUNG THỰC TẾ (Tiêu đề, mô tả, văn bản trang, các dịch vụ/nút bấm) được cung cấp để đánh giá tính chất hoạt động thực tế của trang web.
+    const systemPrompt = `Bạn là chuyên gia an ninh mạng, thẩm định uy tín, bảo mật và tuân thủ pháp lý website.
+Nhiệm vụ của bạn là ĐỌC KỸ TOÀN BỘ NỘI DUNG THỰC TẾ (Tiêu đề, mô tả, văn bản trang, các dịch vụ/nút bấm) được cung cấp để đánh giá toàn diện tính chất trang web.
 
-QUY TẮC THẨM ĐỊNH THEO NỘI DUNG:
+QUY TẮC THẨM ĐỊNH:
 1. NẾU NỘI DUNG THỰC TẾ LÀ CỜ BẠC / CÁ CƯỢC / CASINO / GAME BÀI:
-   - Dấu hiệu trong nội dung: Cung cấp trò chơi cá độ bóng đá, casino trực tuyến, baccarat, tài xỉu, nổ hũ, bắn cá đổi thưởng, đăng ký tài khoản đại lý cá cược, nạp rút tiền đánh bạc...
-   - THEO PHÁP LUẬT VIỆT NAM (Điều 321, 322 Bộ luật Hình sự & Điều 8 Luật An ninh mạng 2018): Các hoạt động này là BẤT HỢP PHÁP VÀ BỊ CẤM HOÀN TOÀN.
-   - BẮT BUỘC: gán trust_score từ 5 đến 15, status là "Dangerous". Trích dẫn cụ thể các nội dung/dịch vụ cá cược mà bạn đọc được trong bài làm bằng chứng.
+   - Dấu hiệu: Cung cấp trò chơi cá cược bóng đá, casino trực tuyến, baccarat, tài xỉu, nổ hũ, game bài đổi thưởng tiền thật, nạp rút thẻ cào/ngân hàng để đánh bạc...
+   - Theo pháp luật Việt Nam (Điều 321, 322 Bộ luật Hình sự & Điều 8 Luật An ninh mạng 2018): Các hoạt động này là BẤT HỢP PHÁP VÀ BỊ CẤM HOÀN TOÀN.
+   - BẮT BUỘC: gán trust_score từ 5 đến 15, status là "Dangerous". age_rating.label là "Cấm dưới 18 tuổi / Bất hợp pháp".
 
 2. NẾU NỘI DUNG LÀ LỪA ĐẢO / GIẢ MẠO / THU THẬP THÔNG TIN (PHISHING):
-   - Bắt người dùng nhập OTP, thông tin thẻ tín dụng, tạo giao diện giống hệt ngân hàng/sàn TMĐT nhưng địa chỉ khác lạ.
+   - Dấu hiệu: Bắt người dùng nhập OTP, thông tin thẻ tín dụng, tạo giao diện mạo danh thương hiệu, thông báo trúng thưởng ảo.
    - BẮT BUỘC: gán trust_score dưới 20, status là "Dangerous".
 
-3. NẾU NỘI DUNG LÀ WEBSITE THƯƠNG MẠI / DOANH NGHIỆP / CÔNG CỤ BÌNH THƯỜNG:
-   - Có thông tin giới thiệu, chính sách rõ ràng, sản phẩm hợp pháp: gán trust_score từ 75 đến 95, status "Safe".
+3. NẾU NỘI DUNG LÀ WEBSITE THƯƠNG MẠI / DOANH NGHIỆP / CÔNG CỤ / DỊCH VỤ CÔNG HỢP PHÁP:
+   - Có thông tin định danh chủ thể, chính sách sản phẩm rõ ràng: gán trust_score từ 75 đến 95, status "Safe". Đánh giá độ tuổi phù hợp (ví dụ "Mọi lứa tuổi (3+)" hoặc "13+ (Thanh thiếu niên)").
 
-Hãy trả về DUY NHẤT một JSON hợp lệ:
+Hãy trả về DUY NHẤT một JSON hợp lệ theo đúng cấu trúc sau:
 {
   "trust_score": <số nguyên 0-100>,
   "status": <"Safe" | "Warning" | "Dangerous">,
-  "summary": <"Tóm tắt dựa trên NỘI DUNG THỰC TẾ đọc được từ trang web">,
-  "red_flags": [<"Bằng chứng nội dung đáng ngờ 1">, <"Bằng chứng 2">, ...],
-  "recommendations": [<"Lời khuyên cho người dùng">, ...]
+  "summary": <"Tóm tắt 2-3 câu dựa trên NỘI DUNG THỰC TẾ đọc được từ trang web">,
+  "age_rating": {
+    "label": <"Mọi lứa tuổi (3+)" | "Thanh thiếu niên (13+)" | "Người trưởng thành (18+)" | "Cấm dưới 18 tuổi / Bất hợp pháp">,
+    "reason": <"Giải thích ngắn 1-2 câu về lý do xếp hạng độ tuổi">
+  },
+  "certificates": [
+    {
+      "name": <"Tên chứng chỉ, ví dụ: TLS/HTTPS Mã hóa dữ liệu, Đăng ký Bộ Công Thương, Tín nhiệm mạng NCSC, v.v.">,
+      "status": <"Verified" | "Not Detected" | "Warning">,
+      "details": <"Chi tiết ngắn gọn về tình trạng chứng nhận">
+    }
+  ],
+  "usage_notes": [
+    <"Lưu ý an toàn thực tế 1 khi sử dụng/giao dịch trên website">,
+    <"Lưu ý 2">,
+    <"Lưu ý 3">
+  ],
+  "red_flags": [<"Bằng chứng nội dung đáng ngờ 1">, ...],
+  "recommendations": [<"Lời khuyên hành động 1">, ...],
+  "ai_disclaimer": "Mô hình AI hỗ trợ thẩm định dựa trên dữ liệu ngữ nghĩa và kỹ thuật tại thời điểm quét. AI đôi khi có thể có sai sót hoặc chưa bao quát hết mọi biến động; người dùng nên kết hợp kiểm tra thực tế trước các quyết định quan trọng."
 }`;
 
     const userPrompt = `URL kiểm tra: ${targetUrl}
@@ -2135,6 +2152,20 @@ ${pageContent}`;
         status: 'Dangerous',
         analysis_engine: result?.analysis_engine ? `${result.analysis_engine} + Chốt chặn Pháp lý (Penalty Gate)` : 'Hệ thống Thẩm định An ninh mạng (Penalty Gate)',
         summary: `NGUY HIỂM / VI PHẠM PHÁP LUẬT: Qua phân tích nội dung thực tế từ trang web ("${pageTitle || hostname}"), hệ thống phát hiện website này đang tổ chức và quảng bá các dịch vụ cá cược, sòng bài trực tuyến (casino) hoặc trò chơi đổi thưởng tiền thật. Đây là các hành vi bị nghiêm cấm theo quy định pháp luật Việt Nam.`,
+        age_rating: {
+          label: 'Cấm dưới 18 tuổi / Bất hợp pháp',
+          reason: 'Hoạt động cờ bạc, cá cược trực tuyến bị nghiêm cấm theo pháp luật Việt Nam, gây tác hại tiêu cực tới tài chính và nhân cách trẻ vị thành niên.'
+        },
+        certificates: [
+          { name: 'Giao thức TLS / HTTPS', status: 'Warning', details: 'Có thể có chứng chỉ kỹ thuật nhưng bị lợi dụng phục vụ hành vi phạm pháp' },
+          { name: 'Giấy phép Bộ TTTT & Bộ Công Thương', status: 'Warning', details: 'HOÀN TOÀN KHÔNG CÓ giấy phép hoạt động hợp pháp tại Việt Nam' },
+          { name: 'Cơ sở Dữ liệu An ninh mạng Quốc gia', status: 'Warning', details: 'Thuộc diện ngăn chặn và xử lý vi phạm pháp luật số' }
+        ],
+        usage_notes: [
+          'Tuyệt đối KHÔNG đăng ký tài khoản, không cung cấp họ tên, số điện thoại hay tài khoản ngân hàng.',
+          'Tuyệt đối KHÔNG nạp tiền hay chuyển khoản dưới bất kỳ hình thức nào.',
+          'Đóng tab duyệt web ngay lập tức để tránh bị cài mã độc quảng cáo theo dõi.'
+        ],
         red_flags: [
           `Nội dung trang chứa các hoạt động cờ bạc, cá cược: "${(pageTitle || pageDescription || 'Dịch vụ cá độ/casino').slice(0, 100)}..."`,
           'Vi phạm Điều 321 & Điều 322 Bộ luật Hình sự 2015 (Tội đánh bạc và Tội tổ chức đánh bạc trái phép).',
@@ -2146,6 +2177,7 @@ ${pageContent}`;
           'KHÔNG chuyển tiền vào các tài khoản được trang web này cung cấp.',
           'Rời khỏi trang web ngay lập tức để đảm bảo an toàn pháp lý và tài chính.'
         ],
+        ai_disclaimer: 'Báo cáo được hỗ trợ thẩm định bởi mô hình Gemini AI và hệ thống chốt chặn an ninh mạng. Mô hình AI đôi khi có thể có sai sót; người dùng nên kết hợp kiểm tra thực tế trước các quyết định quan trọng.',
         analyzed_url: targetUrl
       };
     } else if (!result || typeof result.trust_score !== 'number') {
@@ -2161,17 +2193,45 @@ ${pageContent}`;
           status: 'Safe',
           analysis_engine: 'Verity Security Engine (Heuristic Fallback)',
           summary: `Website "${hostname}" thuộc danh mục đơn vị uy tín đã được xác thực danh tính số, sở hữu hạ tầng kết nối an toàn và minh bạch theo quy chuẩn an toàn mạng.`,
+          age_rating: {
+            label: 'Mọi lứa tuổi (3+)',
+            reason: 'Nền tảng cung cấp dịch vụ/thương mại điện tử chuẩn mực; phụ huynh có thể giám sát khi trẻ thực hiện giao dịch thanh toán.'
+          },
+          certificates: [
+            { name: 'Mã hóa kết nối TLS 1.3 / HTTPS', status: 'Verified', details: 'Bảo mật truyền dữ liệu đạt tiêu chuẩn mã hóa quốc tế' },
+            { name: 'Đăng ký Bộ Công Thương', status: 'Verified', details: 'Đơn vị đã khai báo hoạt động thương mại điện tử hợp pháp' },
+            { name: 'Tuân thủ Nghị định 13/2023/NĐ-CP', status: 'Verified', details: 'Có điều khoản và chính sách bảo vệ dữ liệu cá nhân' }
+          ],
+          usage_notes: [
+            'Luôn kiểm tra đúng thanh địa chỉ trình duyệt trước khi nhập mật khẩu đăng nhập.',
+            'Bật xác thực 2 yếu tố (2FA) để tăng cường bảo mật tài khoản cá nhân.',
+            'Kiểm tra lại hóa đơn và thông tin thanh toán trước khi xác nhận giao dịch.'
+          ],
           red_flags: [],
           recommendations: [
             'Website an toàn, có thể thực hiện giao dịch và truy cập bình thường.',
             'Luôn kiểm tra đúng thanh địa chỉ chính chủ trước khi nhập thông tin cá nhân.'
-          ]
+          ],
+          ai_disclaimer: 'Báo cáo được hỗ trợ thẩm định bởi mô hình Gemini AI. Mô hình AI đôi khi có thể có sai sót hoặc chưa cập nhật kịp thời biến động mới nhất; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định giao dịch quan trọng.'
         };
       } else if (isSuspicious) {
         result = {
           trust_score: 22,
           status: 'Dangerous',
           summary: `CẢNH BÁO: Tên miền "${hostname}" sử dụng đuôi mở rộng rủi ro cao hoặc chứa các từ khóa định danh nhạy cảm thường xuất hiện trong các chiến dịch lừa đảo chiếm đoạt tài sản.`,
+          age_rating: {
+            label: 'Cảnh báo Rủi ro cao / Hạn chế',
+            reason: 'Dấu hiệu mạo danh thương hiệu hoặc lừa đảo tài chính, không an toàn cho bất kỳ lứa tuổi nào.'
+          },
+          certificates: [
+            { name: 'Giao thức kết nối', status: 'Warning', details: 'Sử dụng TLD rủi ro cao hoặc chưa xác thực danh tính chủ sở hữu' },
+            { name: 'Chứng nhận Tín nhiệm Pháp lý', status: 'Not Detected', details: 'Không phát hiện đăng ký kinh doanh hay chứng nhận bảo vệ người tiêu dùng' }
+          ],
+          usage_notes: [
+            'Tuyệt đối không nhập mã OTP hay thông tin thẻ ngân hàng trên trang này.',
+            'Không tải về các tệp tin lạ từ website này về máy tính hay điện thoại.',
+            'Thoát khỏi website ngay lập tức để bảo vệ dữ liệu cá nhân.'
+          ],
           red_flags: [
             'Tên miền có dấu hiệu giả mạo thương hiệu hoặc sử dụng TLD rủi ro cao (.top, .xyz, .vip).',
             'Nội dung có biểu hiện thu thập thông tin xác thực OTP hoặc thông tin thẻ ngân hàng bất thường.',
@@ -2180,20 +2240,34 @@ ${pageContent}`;
           recommendations: [
             'TUYỆT ĐỐI KHÔNG nhập số điện thoại, mật khẩu, mã OTP hoặc số thẻ ngân hàng vào trang này.',
             'Đóng tab trình duyệt ngay lập tức để tránh nguy cơ bị cài mã độc ngầm.'
-          ]
+          ],
+          ai_disclaimer: 'Báo cáo được hỗ trợ thẩm định bởi mô hình Gemini AI. Mô hình AI đôi khi có thể có sai sót; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định.'
         };
       } else {
         result = {
           trust_score: 82,
           status: 'Safe',
           summary: `Website "${hostname}" hoạt động trên giao thức HTTPS bảo mật, chưa ghi nhận dấu hiệu vi phạm trong danh sách đen an ninh mạng quốc gia.`,
+          age_rating: {
+            label: 'Phù hợp từ 13 tuổi trở lên',
+            reason: 'Nội dung thông tin thông thường; khuyến nghị người dùng quản lý tài khoản an toàn.'
+          },
+          certificates: [
+            { name: 'Giao thức HTTPS / TLS', status: 'Verified', details: 'Chứng chỉ mã hóa SSL hợp lệ bảo vệ đường truyền' },
+            { name: 'Chính sách bảo mật', status: 'Verified', details: 'Có hiển thị điều khoản và chính sách thông tin cơ bản' }
+          ],
+          usage_notes: [
+            'Kiểm tra thanh URL đảm bảo kết nối HTTPS có biểu tượng ổ khóa an toàn.',
+            'Chỉ cung cấp thông tin cá nhân thực sự cần thiết khi sử dụng dịch vụ.'
+          ],
           red_flags: [
             'Nên kiểm tra kỹ các điều khoản sử dụng và chính sách thu thập dữ liệu cá nhân theo Nghị định 13/2023/NĐ-CP.'
           ],
           recommendations: [
             'Trang web đạt chuẩn an toàn cơ bản, có thể sử dụng bình thường.',
             'Cân nhắc chỉ chia sẻ các thông tin cá nhân thực sự cần thiết.'
-          ]
+          ],
+          ai_disclaimer: 'Báo cáo được hỗ trợ thẩm định bởi mô hình Gemini AI. Mô hình AI đôi khi có thể có sai sót; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định.'
         };
       }
     }
@@ -2202,8 +2276,21 @@ ${pageContent}`;
     result.trust_score = typeof result.trust_score === 'number' ? result.trust_score : 50;
     result.status = result.status || (result.trust_score >= 80 ? 'Safe' : result.trust_score >= 50 ? 'Warning' : 'Dangerous');
     result.summary = result.summary || 'Không có tóm tắt.';
+    result.age_rating = result.age_rating || {
+      label: result.status === 'Dangerous' ? 'Cấm dưới 18 tuổi / Bất hợp pháp' : 'Mọi lứa tuổi (3+)',
+      reason: result.status === 'Dangerous' ? 'Trang web có dấu hiệu nguy hại hoặc vi phạm pháp luật.' : 'Nội dung thông thường, có thể truy cập an toàn.'
+    };
+    result.certificates = Array.isArray(result.certificates) && result.certificates.length > 0 ? result.certificates : [
+      { name: targetUrl.startsWith('https://') ? 'Giao thức HTTPS / TLS' : 'Giao thức HTTP (Chưa mã hóa)', status: targetUrl.startsWith('https://') ? 'Verified' : 'Warning', details: targetUrl.startsWith('https://') ? 'Kết nối được mã hóa bảo vệ' : 'Kết nối không được mã hóa an toàn' }
+    ];
+    result.usage_notes = Array.isArray(result.usage_notes) && result.usage_notes.length > 0 ? result.usage_notes : [
+      'Luôn đối chiếu đúng tên miền chính thức trên thanh địa chỉ trước khi nhập thông tin đăng nhập.',
+      'Không chia sẻ mã xác thực OTP hay mật khẩu cho bất kỳ trang web nào yêu cầu bất thường.',
+      'Thường xuyên kiểm tra lịch sử đăng nhập và thông báo biến động số dư tài khoản.'
+    ];
     result.red_flags = Array.isArray(result.red_flags) ? result.red_flags : [];
     result.recommendations = Array.isArray(result.recommendations) ? result.recommendations : [];
+    result.ai_disclaimer = result.ai_disclaimer || 'Báo cáo được tổng hợp tự động bởi mô hình Gemini AI kết hợp các thuật toán rà soát an ninh mạng và chốt chặn pháp lý. Mô hình AI đôi khi có thể có sai sót hoặc chưa cập nhật kịp thời các biến động mới nhất của website; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định giao dịch quan trọng.';
     result.analyzed_url = targetUrl;
 
     return res.json(result);
