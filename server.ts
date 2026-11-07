@@ -31,102 +31,236 @@ app.use((req, res, next) => {
   next();
 });
 
-// Shared server-side Gemini client with aistudio-build telemetry header
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    },
-  },
-});
+// Detect API Key and Provider (OpenRouter vs Google Gemini)
+const RAW_API_KEY = (process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || '').trim();
+const IS_OPENROUTER = RAW_API_KEY.startsWith('sk-or-') || Boolean(process.env.OPENROUTER_API_KEY);
+
+if (IS_OPENROUTER) {
+  console.log('[AI Provider] 🌐 Phát hiện OpenRouter API Key (bắt đầu bằng sk-or-). Tự động kích hoạt Động cơ OpenRouter AI.');
+} else if (RAW_API_KEY) {
+  console.log('[AI Provider] ⚡ Phát hiện Google Gemini API Key. Tự động kích hoạt Động cơ Google GenAI.');
+} else {
+  console.warn('[AI Provider] ⚠️ Chưa tìm thấy API Key trong file .env (GEMINI_API_KEY / OPENROUTER_API_KEY). Sẽ sử dụng Heuristic Fallback Engine.');
+}
+
+// Shared server-side Gemini client (khởi tạo khi dùng native Google Gemini)
+const ai = (!IS_OPENROUTER && RAW_API_KEY)
+  ? new GoogleGenAI({
+      apiKey: RAW_API_KEY,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    })
+  : null;
 
 /**
  * ============================================================================
- * CẤU HÌNH & XỬ LÝ LỖI GEMINI API: FAST-FAILOVER RESILIENT PIPELINE
+ * CẤU HÌNH & XỬ LÝ LỖI AI API: FAST-FAILOVER RESILIENT PIPELINE
  * ============================================================================
- * Thứ tự ưu tiên Model (tuân thủ nghiêm ngặt yêu cầu hệ thống):
- * 1. gemini-1.5-flash: Model ưu tiên số 1 (hạ tầng ổn định, tốc độ phản hồi nhanh nhất, không bị 503)
- * 2. gemini-1.5-flash-8b: Model dự phòng 1 (độ trễ siêu thấp)
- * 3. gemini-3.8-flash: Model dự phòng 2 (suy luận thế hệ mới)
- * 4. gemini-1.5-pro: Model dự phòng 3 (chất lượng phân tích chuyên sâu)
+ * Tự động định tuyến theo Provider:
+ * 1. OpenRouter (Tối ưu phản hồi < 1-2 giây cho Free Tier & Credit-free):
+ *    - liquid/lfm-2.5-2.6b:free (Độ trễ < 800ms, cực kỳ ổn định)
+ *    - openrouter/free (Tự động định tuyến đến free model khả dụng tốt nhất)
+ *    - nvidia/nemotron-3.5-super-vl:free
+ *    - nvidia/nemotron-3.5-lightning:free
+ *    - google/gemini-2.0-flash-001 (fallback khi người dùng có credits)
+ *    - google/gemini-flash-1.5 (fallback khi người dùng có credits)
  *
- * *Lưu ý*: Model gemini-2.5-flash và gemini-3.5-flash-lite đã được loại bỏ để tránh 404 và 503.
+ * 2. Google Gemini Native (Khi người dùng sử dụng API Key trực tiếp từ Google AI Studio):
+ *    - gemini-1.5-flash: Model ưu tiên số 1 (hạ tầng ổn định, tốc độ phản hồi nhanh nhất, không bị nghẽn 503)
+ *    - gemini-1.5-flash-8b: Model dự phòng 1 (độ trễ siêu thấp)
+ *    - gemini-3.8-flash: Model dự phòng 2 (suy luận thế hệ mới)
+ *    - gemini-1.5-pro: Model dự phòng 3 (chất lượng phân tích chuyên sâu)
  */
-const GEMINI_MODELS_CASCADE: string[] = [
+const OPENROUTER_MODELS_CASCADE: string[] = [
+  'liquid/lfm-2.5-2.6b:free',
+  'openrouter/free',
+  'nvidia/nemotron-3.5-super-vl:free',
+  'nvidia/nemotron-3.5-lightning:free',
+  'google/gemini-2.0-flash-001',
+  'google/gemini-flash-1.5',
+];
+
+const GOOGLE_GEMINI_MODELS_CASCADE: string[] = [
   'gemini-1.5-flash',
   'gemini-1.5-flash-8b',
   'gemini-3.8-flash',
   'gemini-1.5-pro',
 ];
 
+async function callOpenRouter(modelName: string, options: {
+  contents: any;
+  systemInstruction?: string;
+  responseMimeType?: string;
+  temperature?: number;
+  timeoutMs?: number;
+}): Promise<string> {
+  const messages: any[] = [];
+  if (options.systemInstruction) {
+    messages.push({ role: 'system', content: options.systemInstruction });
+  }
+
+  if (typeof options.contents === 'string') {
+    messages.push({ role: 'user', content: options.contents });
+  } else if (options.contents?.parts && Array.isArray(options.contents.parts)) {
+    const contentParts: any[] = [];
+    for (const part of options.contents.parts) {
+      if (part.text) {
+        contentParts.push({ type: 'text', text: part.text });
+      } else if (part.inlineData) {
+        const mime = part.inlineData.mimeType || 'image/jpeg';
+        const b64 = part.inlineData.data;
+        contentParts.push({
+          type: 'image_url',
+          image_url: {
+            url: `data:${mime};base64,${b64}`,
+          },
+        });
+      }
+    }
+    messages.push({ role: 'user', content: contentParts.length ? contentParts : String(options.contents) });
+  } else {
+    messages.push({ role: 'user', content: typeof options.contents === 'object' ? JSON.stringify(options.contents) : String(options.contents) });
+  }
+
+  const payload: any = {
+    model: modelName,
+    messages,
+    temperature: options.temperature ?? 0.2,
+  };
+
+  if (options.responseMimeType === 'application/json') {
+    payload.response_format = { type: 'json_object' };
+  }
+
+  const controller = new AbortController();
+  const timeoutMs = options.timeoutMs ?? 8000;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RAW_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://verity.trust',
+        'X-Title': 'Verity Trust XAI',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      const msg = errJson?.error?.message || `HTTP ${res.status} ${res.statusText}`;
+      throw new Error(`OpenRouter Error: ${msg}`);
+    }
+
+    const data = await res.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error('OpenRouter response returned empty choices');
+    }
+    return content;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function callGoogleGemini(modelName: string, options: {
+  contents: any;
+  systemInstruction?: string;
+  responseMimeType?: string;
+  temperature?: number;
+  timeoutMs?: number;
+}): Promise<string> {
+  if (!ai) {
+    throw new Error('Google GenAI client not initialized (OpenRouter key detected or missing key)');
+  }
+  const timeoutMs = options.timeoutMs ?? 8000;
+  let timeoutTimer: NodeJS.Timeout | null = null;
+
+  try {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutTimer = setTimeout(() => {
+        reject(new Error(`Timeout quá ${timeoutMs}ms khi gọi model ${modelName}`));
+      }, timeoutMs);
+    });
+
+    const requestPromise = ai.models.generateContent({
+      model: modelName,
+      contents: options.contents,
+      config: {
+        systemInstruction: options.systemInstruction,
+        temperature: options.temperature ?? 0.2,
+        responseMimeType: (options.responseMimeType as any) || 'application/json',
+      },
+    });
+
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    if (!response || !response.text) {
+      throw new Error('Empty response from Google Gemini');
+    }
+    return response.text;
+  } finally {
+    if (timeoutTimer) clearTimeout(timeoutTimer);
+  }
+}
+
 /**
- * Hàm gọi Gemini AI với cơ chế Fast-Failover:
+ * Hàm gọi AI với cơ chế Fast-Failover:
+ * - Tự động định tuyến giữa OpenRouter và Google Gemini.
  * - Không lặp lại retry nhiều lần trên cùng 1 model gây nghẽn UI (>10s).
- * - Nếu model trả về 503, 404 hoặc lỗi bất kỳ: Lập tức chuyển sang model kế tiếp trong < 50ms.
- * - Giới hạn timeout 8000ms mỗi request (tự động ngắt nếu server Gemini treo để failover ngay).
+ * - Nếu model trả về 503, 404, 402 hoặc timeout: Lập tức chuyển sang model kế tiếp trong < 50ms.
+ * - Giới hạn timeout 8000ms mỗi request (tự động ngắt nếu model treo để failover ngay).
  * - Đảm bảo tốc độ phản hồi tổng thể luôn dưới 2 - 3 giây.
  */
-async function generateGeminiWithFastFailover(options: {
+async function generateAIWithFastFailover(options: {
   contents: any;
   systemInstruction?: string;
   responseMimeType?: string;
   temperature?: number;
   models?: string[];
   timeoutMs?: number;
-}): Promise<{ text: string; modelName: string } | null> {
-  const models = options.models || GEMINI_MODELS_CASCADE;
-  const timeoutMs = options.timeoutMs ?? 8000; // Timeout 8s theo yêu cầu
+}): Promise<{ text: string; modelName: string; provider: 'openrouter' | 'google' } | null> {
+  const isOR = IS_OPENROUTER;
+  const defaultModels = isOR ? OPENROUTER_MODELS_CASCADE : GOOGLE_GEMINI_MODELS_CASCADE;
+  const models = options.models || defaultModels;
+  const timeoutMs = options.timeoutMs ?? 8000;
+  const providerLabel = isOR ? 'OpenRouter AI' : 'Google Gemini AI';
 
   for (const modelName of models) {
     const startTime = Date.now();
-    let timeoutTimer: NodeJS.Timeout | null = null;
-
     try {
-      console.log(`[Gemini AI] 🚀 Đang gửi yêu cầu tới model: ${modelName}...`);
+      console.log(`[${providerLabel}] 🚀 Đang gửi yêu cầu tới model: ${modelName}...`);
 
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutTimer = setTimeout(() => {
-          reject(new Error(`Timeout quá ${timeoutMs}ms khi gọi model ${modelName}`));
-        }, timeoutMs);
-      });
+      const text = isOR
+        ? await callOpenRouter(modelName, { ...options, timeoutMs })
+        : await callGoogleGemini(modelName, { ...options, timeoutMs });
 
-      const requestPromise = ai.models.generateContent({
-        model: modelName,
-        contents: options.contents,
-        config: {
-          systemInstruction: options.systemInstruction,
-          temperature: options.temperature ?? 0.2,
-          responseMimeType: (options.responseMimeType as any) || 'application/json',
-        },
-      });
-
-      // Chạy đua giữa API request và timeout ngắt tự động
-      const response = await Promise.race([requestPromise, timeoutPromise]);
-      if (timeoutTimer) clearTimeout(timeoutTimer);
-
-      if (response && response.text) {
-        const duration = Date.now() - startTime;
-        console.log(`[Gemini AI] ✅ Phân tích THÀNH CÔNG từ ${modelName} trong ${duration}ms!`);
-        return { text: response.text, modelName };
-      }
+      const duration = Date.now() - startTime;
+      console.log(`[${providerLabel}] ✅ Phân tích THÀNH CÔNG từ ${modelName} trong ${duration}ms!`);
+      return { text, modelName, provider: isOR ? 'openrouter' : 'google' };
     } catch (err: any) {
-      if (timeoutTimer) clearTimeout(timeoutTimer);
       const duration = Date.now() - startTime;
       const errorMsg = err?.message || err?.error?.message || String(err);
 
       // Fast-failover: Ghi nhận lỗi và lập tức chuyển sang model tiếp theo (< 50ms)
-      console.warn(`[Gemini AI] ⚠️ Model ${modelName} gặp sự cố sau ${duration}ms: ${errorMsg}`);
-      console.log(`[Gemini AI] ⏩ Fast-failover: Lập tức chuyển sang model tiếp theo trong danh sách...`);
+      console.warn(`[${providerLabel}] ⚠️ Model ${modelName} gặp sự cố sau ${duration}ms: ${errorMsg}`);
+      console.log(`[${providerLabel}] ⏩ Fast-failover: Lập tức chuyển sang model tiếp theo trong danh sách...`);
 
       // Độ trễ tối thiểu 30ms để nhường CPU cho event loop
       await new Promise(resolve => setTimeout(resolve, 30));
     }
   }
 
-  console.warn(`[Gemini AI] ⚠️ Tất cả model trong danh sách fallback đều không phản hồi. Tự động kích hoạt Động cơ Giám định Nội bộ (Heuristic Fallback Engine).`);
+  console.warn(`[${providerLabel}] ⚠️ Tất cả model trong danh sách fallback đều không phản hồi. Tự động kích hoạt Động cơ Giám định Nội bộ (Heuristic Fallback Engine).`);
   return null;
 }
+
+const generateGeminiWithFastFailover = generateAIWithFastFailover;
 
 interface ScanRequest {
   targetType: 'url' | 'document' | 'text' | 'image';
@@ -222,17 +356,14 @@ Return strictly valid JSON only:
 ${serialized}`;
 
   try {
-    const aiResponse = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+    const aiResponse = await generateAIWithFastFailover({
       contents: prompt,
-      config: {
-        thinkingConfig: { thinkingBudget: 0 },
-        temperature: 0.1,
-        responseMimeType: 'application/json',
-      },
+      temperature: 0.1,
+      responseMimeType: 'application/json',
+      timeoutMs: 6000,
     });
 
-    const resText = aiResponse.text || '{}';
+    const resText = aiResponse?.text || '{}';
     const parsed = JSON.parse(resText.replace(/```json\n?|```/g, '').trim());
     TRANSLATION_CACHE.set(cacheKey, JSON.stringify(parsed));
     return parsed;
@@ -424,22 +555,22 @@ const TRUSTED_APEX_DOMAINS = new Set([
   'vpbank.com.vn', 'sacombank.com.vn', 'tpbank.com.vn', 'hdbank.com.vn', 'vib.com.vn',
   'seabank.com.vn', 'ocb.com.vn', 'msb.com.vn', 'bacabank.com.vn', 'pvcombank.com.vn',
   'momo.vn', 'vnpay.vn', 'zalopay.vn', 'viettelmoney.vn', 'sbv.gov.vn',
-  
+
   // Vietnam National Government, Ministries & Public Portals
   'chinhphu.vn', 'bocongan.gov.vn', 'mic.gov.vn', 'moit.gov.vn', 'mof.gov.vn',
   'dichvucong.gov.vn', 'vneid.gov.vn', 'baohiemxahoi.gov.vn', 'gdt.gov.vn',
   'customs.gov.vn', 'monre.gov.vn', 'bgtv.gov.vn', 'mpi.gov.vn', 'molisa.gov.vn',
-  
+
   // Vietnam Top News Agencies & Accredited Press
   'vnexpress.net', 'tuoitre.vn', 'thanhnien.vn', 'dantri.com.vn', 'vietnamnet.vn',
   'vtv.vn', 'vov.vn', 'znews.vn', 'laodong.vn', 'nhandan.vn', 'plo.vn', 'sggp.org.vn',
   'tienphong.vn', 'baotintuc.vn', 'cafef.vn', 'cafebiz.vn',
-  
+
   // Vietnam Leading E-Commerce, Retail & Telecommunications
   'shopee.vn', 'tiki.vn', 'lazada.vn', 'sendo.vn', 'fpt.com', 'fptshop.com.vn',
   'thegioididong.com', 'dienmayxanh.com', 'topzone.vn', 'cellphones.com.vn',
   'bachhoaxanh.com', 'hoanghamobile.com', 'viettelstore.vn', 'viettel.vn', 'vinaphone.vn',
-  
+
   // Global Trusted Technology, Cloud & Research Authorities
   'google.com', 'google.com.vn', 'youtube.com', 'facebook.com', 'zalo.me',
   'github.com', 'microsoft.com', 'apple.com', 'amazon.com', 'cloudflare.com',
@@ -512,8 +643,8 @@ function isGamblingTarget(targetUrl: string, hostname: string, pageContent: stri
   if (UNIVERSAL_GAMBLING_REGEX.test(host) || UNIVERSAL_GAMBLING_REGEX.test(url)) return true;
 
   // 3. Kiểm tra danh sách đen tên miền đã xác thực
-  if (PROHIBITED_GAMBLING_BETTING_DOMAINS.has(host) || 
-      Array.from(PROHIBITED_GAMBLING_BETTING_DOMAINS).some(d => host.includes(d))) {
+  if (PROHIBITED_GAMBLING_BETTING_DOMAINS.has(host) ||
+    Array.from(PROHIBITED_GAMBLING_BETTING_DOMAINS).some(d => host.includes(d))) {
     return true;
   }
 
@@ -1143,7 +1274,7 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
 
   // 5. DNS Unresolvable / Non-existent Domain Check (NXDOMAIN only, not transient timeouts)
   const isUnresolvableDomain = isUrl && !isKnownSafeDomain && !isIllegalGambling && !isPhishing && dnsResult?.error && (
-    dnsResult.error.includes('ENOTFOUND') || 
+    dnsResult.error.includes('ENOTFOUND') ||
     dnsResult.error.includes('NXDOMAIN')
   );
 
@@ -1224,9 +1355,9 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
       { action: isEn ? 'Report domain mirrors to National Cyber Security Center (NCSC)' : 'Báo cáo tên miền và liên kết con tới Cổng Cảnh báo An toàn Thông tin', priority: 'recommended', details: isEn ? 'Submit phishing and betting mirrors to national cybersecurity enforcement.' : 'Phản ánh tên miền cờ bạc lừa đảo tới NCSC (canhbao.ncsc.gov.vn) để cơ quan chức năng phong tỏa.' }
     );
 
-  // --------------------------------------------------------------------------
-  // SCENARIO 1: Confirmed Phishing / Brand Impersonation Domain
-  // --------------------------------------------------------------------------
+    // --------------------------------------------------------------------------
+    // SCENARIO 1: Confirmed Phishing / Brand Impersonation Domain
+    // --------------------------------------------------------------------------
   } else if (isPhishing) {
     trustScore = 14;
     status = 'danger';
@@ -1239,8 +1370,8 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
         title: isEn ? 'Deceptive Impersonation & Typosquatting Signature' : 'Cấu trúc tên miền giả mạo mạo danh (Brand Impersonation)',
         category: 'safety',
         severity: 'high',
-        explanation: isEn 
-          ? `Domain "${hostname}" illegally appropriates established brand identity or uses credential-harvesting patterns with untrusted high-risk TLD.` 
+        explanation: isEn
+          ? `Domain "${hostname}" illegally appropriates established brand identity or uses credential-harvesting patterns with untrusted high-risk TLD.`
           : `Tên miền "${hostname}" có dấu hiệu mạo danh thương hiệu hợp pháp nhằm lừa đảo thu thập thông tin đăng nhập hoặc mã OTP.`,
         impact: isEn ? '-50 safety points' : '-50 điểm an toàn'
       },
@@ -1248,8 +1379,8 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
         title: isEn ? 'Opaque Entity & Concealed Ownership' : 'Thiếu minh bạch pháp nhân và ẩn danh sở hữu',
         category: 'transparency',
         severity: 'high',
-        explanation: isEn 
-          ? 'WHOIS identity concealed, lack of enterprise registration or verifiable headquarters.' 
+        explanation: isEn
+          ? 'WHOIS identity concealed, lack of enterprise registration or verifiable headquarters.'
           : 'Ẩn danh hoàn toàn thông tin người đăng ký, không có mã số thuế hoặc địa chỉ kinh doanh hợp pháp.',
         impact: isEn ? '-25 transparency points' : '-25 điểm minh bạch'
       },
@@ -1257,8 +1388,8 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
         title: isEn ? 'Unlawful Data Collection (Decree 13 / GDPR)' : 'Thu thập dữ liệu trái quy định (Nghị định 13/2023/NĐ-CP)',
         category: 'legality',
         severity: 'high',
-        explanation: isEn 
-          ? 'Gathers confidential personal and payment data without lawful authority.' 
+        explanation: isEn
+          ? 'Gathers confidential personal and payment data without lawful authority.'
           : 'Thu thập thông tin xác thực/OTP mà không có cơ sở pháp lý và sự đồng ý của người dùng.',
         impact: isEn ? '-25 legal points' : '-25 điểm pháp lý'
       }
@@ -1275,9 +1406,9 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
       { action: isEn ? 'Report to Cybersecurity Authorities' : 'Báo cáo cảnh báo lừa đảo mạng', priority: 'recommended', details: isEn ? 'Submit domain report to national safety database.' : 'Gửi phản ánh đến Cổng cảnh báo an toàn thông tin quốc gia.' }
     );
 
-  // --------------------------------------------------------------------------
-  // SCENARIO 2: Verified Official / Trusted Enterprise Domain
-  // --------------------------------------------------------------------------
+    // --------------------------------------------------------------------------
+    // SCENARIO 2: Verified Official / Trusted Enterprise Domain
+    // --------------------------------------------------------------------------
   } else if (isKnownSafeDomain) {
     trustScore = 96;
     status = 'safe';
@@ -1290,8 +1421,8 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
         title: isEn ? 'Verified Enterprise Domain & Long-Standing Authority' : 'Tên miền chính thống có uy tín cao (Enterprise Tier)',
         category: 'safety',
         severity: 'safe',
-        explanation: isEn 
-          ? `Canonical domain authority for "${hostname}" with verified TLS encryption (${tlsResult?.protocol || 'TLSv1.3'}) and authentic CA certification.` 
+        explanation: isEn
+          ? `Canonical domain authority for "${hostname}" with verified TLS encryption (${tlsResult?.protocol || 'TLSv1.3'}) and authentic CA certification.`
           : `Tên miền "${hostname}" là cổng dịch vụ chính thống được xác thực, trang bị chứng chỉ TLS mã hóa chuẩn mực và hạ tầng định tuyến an toàn.`,
         impact: isEn ? '+38 safety points' : '+38 điểm an toàn'
       },
@@ -1299,8 +1430,8 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
         title: isEn ? 'Corporate Transparency & Accountable Ownership' : 'Minh bạch thông tin doanh nghiệp và đầu mối pháp lý',
         category: 'transparency',
         severity: 'safe',
-        explanation: isEn 
-          ? 'Registered corporate entity with published enterprise code, operational physical office, and official contact channels.' 
+        explanation: isEn
+          ? 'Registered corporate entity with published enterprise code, operational physical office, and official contact channels.'
           : 'Công khai đầy đủ mã số thuế, địa chỉ trụ sở, cơ chế giải quyết khiếu nại và kênh liên hệ chính thức.',
         impact: isEn ? '+30 transparency points' : '+30 điểm minh bạch'
       },
@@ -1308,8 +1439,8 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
         title: isEn ? 'Personal Data Protection Compliance (Decree 13 / GDPR)' : 'Tuân thủ quy định bảo vệ dữ liệu cá nhân (Nghị định 13/2023/NĐ-CP)',
         category: 'legality',
         severity: 'safe',
-        explanation: isEn 
-          ? 'Explicit user rights framework, lawful processing terms, and robust personal data handling mechanisms.' 
+        explanation: isEn
+          ? 'Explicit user rights framework, lawful processing terms, and robust personal data handling mechanisms.'
           : 'Có chính sách bảo vệ dữ liệu cá nhân rõ ràng, quy định quyền rút lại sự đồng ý theo chuẩn pháp lý.',
         impact: isEn ? '+28 legal points' : '+28 điểm pháp lý'
       }
@@ -1326,9 +1457,9 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
       { action: isEn ? 'Always verify address bar URL' : 'Luôn kiểm tra đúng URL trên thanh địa chỉ', priority: 'optional', details: isEn ? 'Ensure you stay on the official domain when transacting.' : 'Đảm bảo truy cập đúng tên miền chính chủ khi thanh toán.' }
     );
 
-  // --------------------------------------------------------------------------
-  // SCENARIO 3: Problematic Legal Terms / Contract Traps
-  // --------------------------------------------------------------------------
+    // --------------------------------------------------------------------------
+    // SCENARIO 3: Problematic Legal Terms / Contract Traps
+    // --------------------------------------------------------------------------
   } else if (isToS && (hasArbitrationTrap || hasDataSelling || hasBlanketWaiver)) {
     trustScore = 48;
     status = 'danger';
@@ -1376,9 +1507,9 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
       { action: isEn ? 'Do not sign or accept these Terms unconditionally' : 'Không chấp thuận vô điều kiện các điều khoản này', priority: 'urgent', details: isEn ? 'Seek contract amendments or alternative vendors.' : 'Yêu cầu điều chỉnh hoặc từ chối sử dụng dịch vụ có điều khoản bất lợi.' }
     );
 
-  // --------------------------------------------------------------------------
-  // SCENARIO 4: Non-existent / Unresolvable Domain
-  // --------------------------------------------------------------------------
+    // --------------------------------------------------------------------------
+    // SCENARIO 4: Non-existent / Unresolvable Domain
+    // --------------------------------------------------------------------------
   } else if (isUnresolvableDomain) {
     trustScore = 20;
     status = 'danger';
@@ -1390,7 +1521,7 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
       title: isEn ? 'Domain Name Does Not Exist (DNS Resolution Failed)' : 'Tên miền không tồn tại trên hệ thống DNS toàn cầu',
       category: 'safety',
       severity: 'high',
-      explanation: isEn 
+      explanation: isEn
         ? `The hostname "${hostname}" could not be resolved to any valid IP address (NXDOMAIN / ENOTFOUND). The website is offline, decommissioned, or never existed.`
         : `Tên miền "${hostname}" không có bản ghi IP hợp lệ trên hệ thống máy chủ định danh thế giới (NXDOMAIN / ENOTFOUND). Trang web hiện không hoạt động hoặc không tồn tại.`,
       impact: isEn ? '-55 safety points' : '-55 điểm an toàn'
@@ -1406,9 +1537,9 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
       { action: isEn ? 'Verify domain spelling' : 'Kiểm tra lại chính tả tên miền', priority: 'urgent', details: isEn ? 'Check if there is a typo in the URL.' : 'Kiểm tra xem địa chỉ web có bị gõ sai ký tự hay không.' }
     );
 
-  // --------------------------------------------------------------------------
-  // SCENARIO 5: Unrestricted Dynamic Assessment for Global Websites
-  // --------------------------------------------------------------------------
+    // --------------------------------------------------------------------------
+    // SCENARIO 5: Unrestricted Dynamic Assessment for Global Websites
+    // --------------------------------------------------------------------------
   } else {
     const KNOWN_REPUTABLE_CAS = [
       'digicert', "let's encrypt", 'letsencrypt', 'google trust services', 'cloudflare',
@@ -1447,8 +1578,8 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
           title: isEn ? 'Verified Cryptographic Infrastructure & Public Authenticity' : 'Hạ tầng mật mã TLS và danh tính số được xác thực',
           category: 'safety',
           severity: 'safe',
-          explanation: isEn 
-            ? `Connection secured with ${tlsResult?.protocol || 'TLSv1.3'} protocol issued by verified Certificate Authority (${tlsResult?.issuer || 'Authorized Public CA'}). Valid DNS mapping to IP ${dnsResult?.ip || 'Public Host'}.` 
+          explanation: isEn
+            ? `Connection secured with ${tlsResult?.protocol || 'TLSv1.3'} protocol issued by verified Certificate Authority (${tlsResult?.issuer || 'Authorized Public CA'}). Valid DNS mapping to IP ${dnsResult?.ip || 'Public Host'}.`
             : `Giao thức mã hóa ${tlsResult?.protocol || 'TLSv1.3'} hoạt động chuẩn xác, chứng thư số được cấp bởi cơ quan CA hợp lệ (${tlsResult?.issuer || 'Tổ chức CA quốc tế'}). Bản ghi DNS định tuyến an toàn tới IP ${dnsResult?.ip || 'Máy chủ công khai'}.`,
           impact: isEn ? '+35 safety points' : '+35 điểm an toàn'
         },
@@ -1456,8 +1587,8 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
           title: isEn ? 'Active Public Service & Clean Threat Intelligence' : 'Dịch vụ mạng hoạt động ổn định & Danh bạ an ninh tin cậy',
           category: 'transparency',
           severity: 'safe',
-          explanation: isEn 
-            ? 'Entity is actively serving web traffic with standard transport policies. No malicious redirection or phishing indicators detected.' 
+          explanation: isEn
+            ? 'Entity is actively serving web traffic with standard transport policies. No malicious redirection or phishing indicators detected.'
             : 'Website đang phục vụ lưu lượng truy cập bình thường với chính sách bảo mật giao vận chuẩn. Không phát hiện dấu hiệu can thiệp mã độc.',
           impact: isEn ? '+28 transparency points' : '+28 điểm minh bạch'
         },
@@ -1465,8 +1596,8 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
           title: isEn ? 'Transport Privacy & Standard Compliance Baseline' : 'Đáp ứng chuẩn mực bảo vệ dữ liệu truyền thông và quyền riêng tư',
           category: 'legality',
           severity: 'safe',
-          explanation: isEn 
-            ? 'Encrypted data transmission protects end-user communications against eavesdropping and man-in-the-middle tampering.' 
+          explanation: isEn
+            ? 'Encrypted data transmission protects end-user communications against eavesdropping and man-in-the-middle tampering.'
             : 'Mã hóa đường truyền bảo vệ an toàn thông tin người dùng, ngăn chặn nguy cơ nghe lén hoặc tấn công can thiệp dữ liệu trung gian.',
           impact: isEn ? '+25 legal points' : '+25 điểm pháp lý'
         }
@@ -1500,8 +1631,8 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
           title: isEn ? 'Unencrypted Plain HTTP or Unverified Certificate' : 'Kết nối chưa mã hóa hoặc chứng thư số chưa được chứng thực',
           category: 'safety',
           severity: 'medium',
-          explanation: isEn 
-            ? `The connection lacks verified TLS authorization (${tlsResult?.error || 'Unverified CA / Plain HTTP'}). Sensitive data transmitted may be vulnerable to interception.` 
+          explanation: isEn
+            ? `The connection lacks verified TLS authorization (${tlsResult?.error || 'Unverified CA / Plain HTTP'}). Sensitive data transmitted may be vulnerable to interception.`
             : `Kết nối chưa được chứng thực bởi tổ chức CA tin cậy hoặc đang chạy trên giao thức HTTP không mã hóa (${tlsResult?.error || 'Chứng chỉ chưa xác minh'}). Dữ liệu có thể bị rò rỉ nếu truyền tải thông tin mật.`,
           impact: isEn ? '-20 safety points' : '-20 điểm an toàn'
         },
@@ -1509,8 +1640,8 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
           title: isEn ? 'Moderate Information Transparency' : 'Mức độ minh bạch thông tin ở mức tiêu chuẩn',
           category: 'transparency',
           severity: 'medium',
-          explanation: isEn 
-            ? 'Standard service description and contact points present; verify merchant identity before large financial commitments.' 
+          explanation: isEn
+            ? 'Standard service description and contact points present; verify merchant identity before large financial commitments.'
             : 'Có thông tin giới thiệu dịch vụ nhưng cần kiểm chứng thêm pháp nhân trước khi chuyển tiền giá trị lớn.',
           impact: isEn ? '+15 transparency points' : '+15 điểm minh bạch'
         },
@@ -1518,8 +1649,8 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
           title: isEn ? 'Data Privacy & Terms Alignment' : 'Tuân thủ bảo vệ dữ liệu cần hoàn thiện thêm',
           category: 'legality',
           severity: 'medium',
-          explanation: isEn 
-            ? 'Standard policy terms; ensure explicit consent mechanisms for sensitive customer data.' 
+          explanation: isEn
+            ? 'Standard policy terms; ensure explicit consent mechanisms for sensitive customer data.'
             : 'Cần bổ sung cơ chế xác nhận đồng ý riêng biệt đối với dữ liệu cá nhân nhạy cảm.',
           impact: isEn ? '+15 legal points' : '+15 điểm pháp lý'
         }
@@ -1557,23 +1688,23 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
 
   const summary = isEn
     ? (isIllegalGambling
-        ? 'PROHIBITED ILLICIT GAMBLING: Domain violates the Vietnamese Criminal Code (Art. 321, 322), Law on Cybersecurity, and US UIGEA. Blocked by National Cybersecurity Firewalls and unrecognized by sovereign authorities.'
-        : (status === 'safe' 
-            ? 'VERIFIED SAFE: Digital entity exhibits robust cryptographic security, verifiable corporate accountability, and transparent legal terms.'
-            : (status === 'caution'
-                ? 'CAUTION ADVISED: Digital entity operates normally with standard security, but requires caution before sharing sensitive credentials or large financial transfers.'
-                : (isUnresolvableDomain
-                    ? 'NON-EXISTENT HOST: Domain failed DNS resolution. No active server or website exists at this address.'
-                    : 'HIGH RISK ALERT: High probability of phishing, brand impersonation, or aggressive contractual rights infringement detected.'))))
+      ? 'PROHIBITED ILLICIT GAMBLING: Domain violates the Vietnamese Criminal Code (Art. 321, 322), Law on Cybersecurity, and US UIGEA. Blocked by National Cybersecurity Firewalls and unrecognized by sovereign authorities.'
+      : (status === 'safe'
+        ? 'VERIFIED SAFE: Digital entity exhibits robust cryptographic security, verifiable corporate accountability, and transparent legal terms.'
+        : (status === 'caution'
+          ? 'CAUTION ADVISED: Digital entity operates normally with standard security, but requires caution before sharing sensitive credentials or large financial transfers.'
+          : (isUnresolvableDomain
+            ? 'NON-EXISTENT HOST: Domain failed DNS resolution. No active server or website exists at this address.'
+            : 'HIGH RISK ALERT: High probability of phishing, brand impersonation, or aggressive contractual rights infringement detected.'))))
     : (isIllegalGambling
-        ? 'CẢNH BÁO CẤM: Tên miền vi phạm nghiêm trọng Bộ luật Hình sự (Điều 321, 322) và Luật An ninh mạng Việt Nam (Cờ bạc, cá cược trực tuyến phi pháp). Đang bị phong tỏa bởi Tường lửa An ninh mạng Quốc gia và không được Chính phủ công nhận.'
-        : (status === 'safe'
-            ? 'XÁC NHẬN AN TOÀN: Thực thể số có hạ tầng mã hóa TLS đạt chuẩn, minh bạch thông tin pháp nhân và tuân thủ các quy định bảo vệ dữ liệu cá nhân.'
-            : (status === 'caution'
-                ? 'CẦN LƯU Ý: Trang web hoạt động bình thường nhưng cần xác minh kỹ thông tin pháp nhân trước khi chia sẻ dữ liệu nhạy cảm hoặc thanh toán tài chính.'
-                : (isUnresolvableDomain
-                    ? 'TÊN MIỀN KHÔNG TỒN TẠI: Không tìm thấy máy chủ DNS cho tên miền này. Địa chỉ web không hoạt động trên internet.'
-                    : 'CẢNH BÁO NGUY HIỂM: Phát hiện dấu hiệu lừa đảo mạo danh thương hiệu (Phishing), tên miền rủi ro cao hoặc điều khoản ToS xâm phạm quyền lợi người dùng nghiêm trọng.'))));
+      ? 'CẢNH BÁO CẤM: Tên miền vi phạm nghiêm trọng Bộ luật Hình sự (Điều 321, 322) và Luật An ninh mạng Việt Nam (Cờ bạc, cá cược trực tuyến phi pháp). Đang bị phong tỏa bởi Tường lửa An ninh mạng Quốc gia và không được Chính phủ công nhận.'
+      : (status === 'safe'
+        ? 'XÁC NHẬN AN TOÀN: Thực thể số có hạ tầng mã hóa TLS đạt chuẩn, minh bạch thông tin pháp nhân và tuân thủ các quy định bảo vệ dữ liệu cá nhân.'
+        : (status === 'caution'
+          ? 'CẦN LƯU Ý: Trang web hoạt động bình thường nhưng cần xác minh kỹ thông tin pháp nhân trước khi chia sẻ dữ liệu nhạy cảm hoặc thanh toán tài chính.'
+          : (isUnresolvableDomain
+            ? 'TÊN MIỀN KHÔNG TỒN TẠI: Không tìm thấy máy chủ DNS cho tên miền này. Địa chỉ web không hoạt động trên internet.'
+            : 'CẢNH BÁO NGUY HIỂM: Phát hiện dấu hiệu lừa đảo mạo danh thương hiệu (Phishing), tên miền rủi ro cao hoặc điều khoản ToS xâm phạm quyền lợi người dùng nghiêm trọng.'))));
 
   return {
     targetTitle: targetTitle || (hostname ? `${hostname}` : targetValue),
@@ -1836,6 +1967,11 @@ Return strictly valid JSON conforming to this schema without markdown formatting
         const cleaned = responseText.replace(/```json\n?|```/g, '').trim();
         parsedReport = JSON.parse(cleaned);
       }
+      if (parsedReport) {
+        parsedReport.analysis_engine = aiExecution.provider === 'openrouter'
+          ? `OpenRouter AI (${aiExecution.modelName})`
+          : `Google Gemini AI (${aiExecution.modelName})`;
+      }
     }
 
     const elapsed = Math.round(performance.now() - requestStartTime);
@@ -1998,16 +2134,13 @@ JSON array to translate:
 ${JSON.stringify(strArr)}`;
 
       try {
-        const aiResponse = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+        const aiResponse = await generateAIWithFastFailover({
           contents: prompt,
-          config: {
-            thinkingConfig: { thinkingBudget: 0 },
-            temperature: 0.1,
-            responseMimeType: 'application/json',
-          },
+          temperature: 0.1,
+          responseMimeType: 'application/json',
+          timeoutMs: 6000,
         });
-        const text = aiResponse.text?.replace(/```json\n?|```/g, '').trim() || '[]';
+        const text = aiResponse?.text?.replace(/```json\n?|```/g, '').trim() || '[]';
         const parsed = JSON.parse(text);
         if (Array.isArray(parsed) && parsed.length === strArr.length) {
           return parsed;
@@ -2098,8 +2231,8 @@ app.post('/api/analyze', async (req, res) => {
 
       // 2. Trích xuất Meta Description & Keywords
       const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
-                        html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i) ||
-                        html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
+        html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i) ||
+        html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
       pageDescription = descMatch ? descMatch[1].trim() : '';
 
       // 3. Trích xuất Text chính (loại bỏ script, style, SVG, các thẻ rác)
@@ -2185,13 +2318,16 @@ ${pageContent}`;
 
     if (aiExecution && aiExecution.text) {
       successfulModel = aiExecution.modelName;
+      const engineLabel = aiExecution.provider === 'openrouter'
+        ? `OpenRouter AI (${successfulModel})`
+        : `Google Gemini AI (${successfulModel})`;
       try {
         result = JSON.parse(aiExecution.text);
-        result.analysis_engine = `Google Gemini AI (${successfulModel})`;
+        result.analysis_engine = engineLabel;
       } catch {
         const cleaned = aiExecution.text.replace(/```json\n?|```/g, '').trim();
         result = JSON.parse(cleaned);
-        result.analysis_engine = `Google Gemini AI (${successfulModel})`;
+        result.analysis_engine = engineLabel;
       }
     }
 
@@ -2203,7 +2339,7 @@ ${pageContent}`;
     // ========================================================================
     // Phát hiện xem trong nội dung thực tế có các hoạt động cờ bạc/cá độ/casino hay không:
     const hasGamblingContent = GAMBLING_KEYWORDS_CONTENT.some(kw => fullTextToInspect.includes(kw)) ||
-                               /(?:sòng bạc|đặt cược|tỷ lệ kèo|kèo bóng đá|quay hũ|game bài|baccarat|roulette|poker trực tuyến|nạp rút nhanh|tặng code tân thủ)/i.test(fullTextToInspect);
+      /(?:sòng bạc|đặt cược|tỷ lệ kèo|kèo bóng đá|quay hũ|game bài|baccarat|roulette|poker trực tuyến|nạp rút nhanh|tặng code tân thủ)/i.test(fullTextToInspect);
 
     // Nếu NỘI DUNG THỰC TẾ phản ánh hoạt động cá cược/casino:
     if (hasGamblingContent || (isGamblingTarget(targetUrl, hostname, fullTextToInspect) && (result?.trust_score > 20 || !result))) {
@@ -2237,15 +2373,15 @@ ${pageContent}`;
           'KHÔNG chuyển tiền vào các tài khoản được trang web này cung cấp.',
           'Rời khỏi trang web ngay lập tức để đảm bảo an toàn pháp lý và tài chính.'
         ],
-        ai_disclaimer: 'Báo cáo được hỗ trợ thẩm định bởi mô hình Gemini AI và hệ thống chốt chặn an ninh mạng. Mô hình AI đôi khi có thể có sai sót; người dùng nên kết hợp kiểm tra thực tế trước các quyết định quan trọng.',
+        ai_disclaimer: 'Báo cáo được hỗ trợ thẩm định bởi mô hình Trí tuệ Nhân tạo (AI) và hệ thống chốt chặn an ninh mạng. Mô hình AI đôi khi có thể có sai sót; người dùng nên kết hợp kiểm tra thực tế trước các quyết định quan trọng.',
         analyzed_url: targetUrl
       };
     } else if (!result || typeof result.trust_score !== 'number') {
-      // Fallback nếu Gemini không trả về dữ liệu
-      const isKnownSafe = TRUSTED_APEX_DOMAINS.has(hostname) || 
-                          Array.from(TRUSTED_APEX_DOMAINS).some(d => hostname === d || hostname.endsWith('.' + d));
+      // Fallback nếu AI không trả về dữ liệu
+      const isKnownSafe = TRUSTED_APEX_DOMAINS.has(hostname) ||
+        Array.from(TRUSTED_APEX_DOMAINS).some(d => hostname === d || hostname.endsWith('.' + d));
       const isSuspicious = HIGH_RISK_TLDS.some(tld => hostname.endsWith(tld)) ||
-                           PHISHING_HOST_KEYWORDS.some(kw => hostname.includes(kw));
+        PHISHING_HOST_KEYWORDS.some(kw => hostname.includes(kw));
 
       if (isKnownSafe) {
         result = {
@@ -2272,7 +2408,7 @@ ${pageContent}`;
             'Website an toàn, có thể thực hiện giao dịch và truy cập bình thường.',
             'Luôn kiểm tra đúng thanh địa chỉ chính chủ trước khi nhập thông tin cá nhân.'
           ],
-          ai_disclaimer: 'Báo cáo được hỗ trợ thẩm định bởi mô hình Gemini AI. Mô hình AI đôi khi có thể có sai sót hoặc chưa cập nhật kịp thời biến động mới nhất; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định giao dịch quan trọng.'
+          ai_disclaimer: 'Báo cáo được hỗ trợ thẩm định bởi mô hình Trí tuệ Nhân tạo (AI). Mô hình AI đôi khi có thể có sai sót hoặc chưa cập nhật kịp thời biến động mới nhất; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định giao dịch quan trọng.'
         };
       } else if (isSuspicious) {
         result = {
@@ -2301,7 +2437,7 @@ ${pageContent}`;
             'TUYỆT ĐỐI KHÔNG nhập số điện thoại, mật khẩu, mã OTP hoặc số thẻ ngân hàng vào trang này.',
             'Đóng tab trình duyệt ngay lập tức để tránh nguy cơ bị cài mã độc ngầm.'
           ],
-          ai_disclaimer: 'Báo cáo được hỗ trợ thẩm định bởi mô hình Gemini AI. Mô hình AI đôi khi có thể có sai sót; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định.'
+          ai_disclaimer: 'Báo cáo được hỗ trợ thẩm định bởi mô hình Trí tuệ Nhân tạo (AI). Mô hình AI đôi khi có thể có sai sót; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định.'
         };
       } else {
         result = {
@@ -2327,7 +2463,7 @@ ${pageContent}`;
             'Trang web đạt chuẩn an toàn cơ bản, có thể sử dụng bình thường.',
             'Cân nhắc chỉ chia sẻ các thông tin cá nhân thực sự cần thiết.'
           ],
-          ai_disclaimer: 'Báo cáo được hỗ trợ thẩm định bởi mô hình Gemini AI. Mô hình AI đôi khi có thể có sai sót; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định.'
+          ai_disclaimer: 'Báo cáo được hỗ trợ thẩm định bởi mô hình Trí tuệ Nhân tạo (AI). Mô hình AI đôi khi có thể có sai sót; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định.'
         };
       }
     }
