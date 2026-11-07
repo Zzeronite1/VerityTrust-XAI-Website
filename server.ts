@@ -12,6 +12,7 @@ import crypto from 'node:crypto';
 import { BlockedTargetError, resolvePublicAddress, safeFetch } from './server/netSafety.ts';
 import { collectEvidence, type SiteEvidence } from './server/evidence.ts';
 import { scoreEvidence, statusFromScore, type RiskAssessment } from './server/riskScoring.ts';
+import { queryJevDecision, applyJevDecision, type JevDecisionResult } from './server/jevDecision.ts';
 import { startReputationFeeds } from './server/reputation.ts';
 import {
   GAMBLING_KEYWORDS_CONTENT,
@@ -2466,14 +2467,21 @@ async function computeAnalyzeResult(targetUrl: string, hostname: string): Promis
 
   // --- Bước 1: Thu thập bằng chứng kỹ thuật + nội dung trang, chấm điểm theo bằng chứng ---
   const evidence = await collectEvidence(targetUrl);
-  const assessment = scoreEvidence(evidence);
+  let assessment = scoreEvidence(evidence);
+
+  // --- Tầng trọng tài quyết định Jev / OpenJev (nếu cấu hình JEV_MODE=api hoặc JEV_MODE=openjev) ---
+  const jevDecision = await queryJevDecision(evidence, assessment);
+  if (jevDecision) {
+    assessment = applyJevDecision(assessment, jevDecision);
+  }
+
   const html = evidence.html;
   const pageTitle = html?.title || '';
   const pageDescription = html?.description || '';
   const pageContent = html
     ? html.text.slice(0, 4000)
     : `[Không tải được nội dung trang: ${evidence.http.fetchError || evidence.dns.error || 'không phản hồi'}]`;
-  console.log(`[Audit Engine] Bằng chứng: ${assessment.score}/100 (${assessment.verdict}, độ đầy đủ ${Math.round(assessment.confidence * 100)}%) trong ${evidence.collectedMs}ms`);
+  console.log(`[Audit Engine] Bằng chứng: ${assessment.score}/100 (${assessment.verdict}, độ đầy đủ ${Math.round(assessment.confidence * 100)}%) trong ${evidence.collectedMs}ms${jevDecision ? ` [Jev: ${jevDecision.engine}]` : ''}`);
 
   // --- Bước 2: AI thẩm định ngữ nghĩa trên NỘI DUNG THỰC TẾ + BẰNG CHỨNG ĐÃ XÁC MINH ---
   let result: any = null;
@@ -2617,7 +2625,9 @@ ${JSON.stringify(result)}`;
       status: finalStatus,
       analysis_engine: engineLabel
         ? `${engineLabel} + Verity Evidence Engine`
-        : 'Verity Evidence Engine (DNS · TLS · RDAP · Tranco · Threat Intel)',
+        : (jevDecision
+          ? `${jevDecision.engine === 'jev-api' ? 'Jev AI (TypeSafe)' : 'OpenJev Gateway'} + Verity Evidence Engine`
+          : 'Verity Evidence Engine (DNS · TLS · RDAP · Tranco · Threat Intel)'),
       // Khi AI và bằng chứng không cùng kết luận, ưu tiên tóm tắt theo bằng chứng và giữ nhận định của AI làm bổ sung
       summary: result && aiAgrees
         ? result.summary
@@ -2640,6 +2650,7 @@ ${JSON.stringify(result)}`;
     verdict: assessment.verdict,
     evidence_completeness: Math.round(assessment.confidence * 100),
     factors: assessment.factors,
+    jev_decision: jevDecision || undefined,
   };
   result.technical_evidence = {
     owner_domain: evidence.domain.ownerDomain,

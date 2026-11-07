@@ -109,6 +109,17 @@ Các lỗi phát hiện khi đo & sửa: RDAP bị `rdap.org` chặn (→ gọi 
    - `blackmoreandroy.com.au`: **80/100 (Safe / Legit)** — Nhận diện chính xác doanh nghiệp cơ khí/may mặc hợp pháp của Úc.
    - Bảng 22 website từ danh sách nghi vấn và cờ bạc của người dùng: toàn bộ $100\%$ bị nhận diện chính xác và phân loại về Dangerous/Warning.
 
+### Đợt 6 — Tích hợp Jev & OpenJev Decision Gateway (Tùy chọn đa chế độ)
+
+1. **Module `server/jevDecision.ts`**:
+   - Cung cấp cổng phân xử quyết định có kiểu dữ liệu chặt chẽ (Typed Decision Gateway) với 3 chế độ (`JEV_MODE`):
+     * `off`: (Mặc định) Tắt, sử dụng 100% động cơ bằng chứng và mạng Hashed MLP nội bộ (0đ, nhẹ máy, chạy trên mọi server không cần AVX2).
+     * `api`: Kết nối TypeSafe AI Jev Cloud API (cần `JEV_API_KEY`).
+     * `openjev`: Kết nối OpenJev tự host (mã nguồn mở / open-weights) qua `OPENJEV_ENDPOINT`.
+   - Cơ chế bảo vệ tài nguyên: `JEV_GRAY_ZONE_ONLY=true` (chỉ kích hoạt phân xử cho các ca điểm số từ 40–74 điểm), giảm 90% số lượng request gọi ra ngoài.
+   - Đảm bảo Zero-Crash: Mọi lỗi kết nối, quá thời gian (timeout) hoặc lỗi máy chủ đều rơi về (fallback) động cơ bằng chứng nội bộ an toàn.
+   - Chuyển đổi toàn bộ kết quả phân xử thành các yếu tố rủi ro giải thích được (XAI Factor Breakdown) trong `result.score_breakdown`.
+
 ---
 
 ## 4. Bảng số đo cuối (không AI, tắt danh sách đen)
@@ -127,7 +138,7 @@ Các lỗi phát hiện khi đo & sửa: RDAP bị `rdap.org` chặn (→ gọi 
 ## 5. Danh sách file thay đổi
 
 - Sửa: `server.ts`, `index.html`, `package.json`, `package-lock.json` (thêm `compression`, `tldts`, `@types/compression`), `.env.example`, `.gitignore` (+`.cache/`)
-- Mới: `src/landing.css`, `server/{netSafety,domainRules,reputation,evidence,riskScoring,hashedMlp,urlModel,contentModel}.ts`, `server/models/*.bin.gz`, `scripts/{eval-accuracy,train-url-model,train-content-model,content-corpus,eval-content-model}.ts`, `scripts/eval-{dataset,holdout,holdout2}.json`
+- Mới: `src/landing.css`, `server/{netSafety,domainRules,reputation,evidence,riskScoring,hashedMlp,urlModel,contentModel,jevDecision}.ts`, `server/models/*.bin.gz`, `scripts/{eval-accuracy,train-url-model,train-content-model,content-corpus,eval-content-model}.ts`, `scripts/eval-{dataset,holdout,holdout2}.json`
 
 ## 6. Lệnh hữu ích
 
@@ -143,13 +154,13 @@ npx tsx scripts/train-content-model.ts
 npx tsx scripts/eval-content-model.ts --tune-phishing <feed.txt> --test-phishing <feed2.txt>
 ```
 
-Biến môi trường mới: `GEMINI_MODELS`, `OPENROUTER_MODELS`, `AI_TOTAL_BUDGET_MS`, `RATE_LIMIT_PER_MIN`, `GOOGLE_SAFE_BROWSING_API_KEY`, `POPULARITY_LIST`, `THREAT_FEEDS`, `DOMAIN_AGE_LOOKUP`, `REPUTATION_CACHE_DIR`, `URL_MODEL`, `CONTENT_MODEL`, `URL_MODEL_PATH`, `CONTENT_MODEL_PATH`.
+Biến môi trường mới: `GEMINI_MODELS`, `OPENROUTER_MODELS`, `AI_TOTAL_BUDGET_MS`, `RATE_LIMIT_PER_MIN`, `GOOGLE_SAFE_BROWSING_API_KEY`, `POPULARITY_LIST`, `THREAT_FEEDS`, `DOMAIN_AGE_LOOKUP`, `REPUTATION_CACHE_DIR`, `URL_MODEL`, `CONTENT_MODEL`, `URL_MODEL_PATH`, `CONTENT_MODEL_PATH`, `JEV_MODE`, `JEV_API_KEY`, `JEV_API_URL`, `OPENJEV_ENDPOINT`, `OPENJEV_API_KEY`, `JEV_GRAY_ZONE_ONLY`.
 
 ---
 
 ## 7. Việc còn dở / rủi ro
 
-1. **Chưa commit** — nên tạo nhánh mới trước khi commit.
+1. **Đã commit & push lên GitHub**: Nhánh `main` của `gianguyen14/VerityTrust-XAI-Website` (commit `3377a6e`).
 2. **Chưa thử với API key AI thật** (luồng hợp nhất điểm AI + bằng chứng).
 3. **Trang dựng bằng JavaScript** chưa đọc được (cần headless browser — Playwright/Chromium ~150 MB, +2–5s/lần quét, phải sandbox).
 4. `/api/scan` (chế độ simplified/deep) **chưa** dùng engine bằng chứng mới — chỉ `/api/analyze`.
