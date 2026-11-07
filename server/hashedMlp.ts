@@ -9,6 +9,7 @@ import zlib from 'node:zlib';
 
 export interface HashedFeatures {
   ids: Uint32Array;
+  weights?: Float32Array;
   dense: Float32Array;
 }
 
@@ -45,11 +46,24 @@ export function forward(m: HashedMlpWeights, f: HashedFeatures, cache?: { x: Flo
   const x = cache?.x ?? new Float32Array(inDim);
   x.fill(0);
   const n = f.ids.length || 1;
-  for (let k = 0; k < f.ids.length; k++) {
-    const base = f.ids[k] * m.dim;
-    for (let d = 0; d < m.dim; d++) x[d] += m.embedding[base + d];
+  const weights = f.weights;
+  let totalW = 0;
+  if (weights && weights.length === f.ids.length) {
+    for (let k = 0; k < f.ids.length; k++) {
+      const w = weights[k];
+      totalW += w;
+      const base = f.ids[k] * m.dim;
+      for (let d = 0; d < m.dim; d++) x[d] += m.embedding[base + d] * w;
+    }
+    const inv = totalW > 0 ? 1 / totalW : 1 / n;
+    for (let d = 0; d < m.dim; d++) x[d] *= inv;
+  } else {
+    for (let k = 0; k < f.ids.length; k++) {
+      const base = f.ids[k] * m.dim;
+      for (let d = 0; d < m.dim; d++) x[d] += m.embedding[base + d];
+    }
+    for (let d = 0; d < m.dim; d++) x[d] /= n;
   }
-  for (let d = 0; d < m.dim; d++) x[d] /= n;
   for (let j = 0; j < m.denseDim; j++) x[m.dim + j] = f.dense[j];
 
   const h = cache?.h ?? new Float32Array(m.hidden);
@@ -86,10 +100,25 @@ export function trainStep(
   }
   for (let i = 0; i < m.hidden; i++) m.w2[i] -= lr * (dz * h[i] + weightDecay * m.w2[i]);
   m.b2 -= lr * (dz + weightDecay * m.b2);
-  const n = f.ids.length || 1;
-  for (let k = 0; k < f.ids.length; k++) {
-    const base = f.ids[k] * m.dim;
-    for (let d = 0; d < m.dim; d++) m.embedding[base + d] -= (lr * dx[d]) / n + lr * weightDecay * m.embedding[base + d];
+
+  const weights = f.weights;
+  if (weights && weights.length === f.ids.length) {
+    let totalW = 0;
+    for (let k = 0; k < weights.length; k++) totalW += weights[k];
+    const inv = totalW > 0 ? 1 / totalW : 1 / (f.ids.length || 1);
+    for (let k = 0; k < f.ids.length; k++) {
+      const base = f.ids[k] * m.dim;
+      const wk = weights[k] * inv;
+      for (let d = 0; d < m.dim; d++) {
+        m.embedding[base + d] -= lr * (dx[d] * wk + weightDecay * m.embedding[base + d]);
+      }
+    }
+  } else {
+    const n = f.ids.length || 1;
+    for (let k = 0; k < f.ids.length; k++) {
+      const base = f.ids[k] * m.dim;
+      for (let d = 0; d < m.dim; d++) m.embedding[base + d] -= (lr * dx[d]) / n + lr * weightDecay * m.embedding[base + d];
+    }
   }
   const pc = Math.min(Math.max(p, 1e-7), 1 - 1e-7);
   return -(y * Math.log(pc) + (1 - y) * Math.log(1 - pc));

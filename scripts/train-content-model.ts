@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CORPUS_THEMES, generateCorpus } from './content-corpus.ts';
 import { CONTENT_DENSE_FEATURES, featurizeContent } from '../server/contentModel.ts';
-import { auc, forward, initModel, metricsAt, serializeModel, trainStep } from '../server/hashedMlp.ts';
+import { auc, forward, initModel, metricsAt, serializeModel, trainStep, type HashedFeatures } from '../server/hashedMlp.ts';
 
 const args = process.argv.slice(2);
 const arg = (name: string, def: string) => {
@@ -16,12 +16,12 @@ const arg = (name: string, def: string) => {
   return i >= 0 && args[i + 1] ? args[i + 1] : def;
 };
 const SAMPLES = parseInt(arg('samples', '80000'), 10);
-const EPOCHS = parseInt(arg('epochs', '2'), 10);
+const EPOCHS = parseInt(arg('epochs', '3'), 10);
 // Label smoothing: dữ liệu tổng hợp dễ tách hơn thế giới thật, tránh để mô hình trở nên quá tự tin
 const SMOOTH = parseFloat(arg('label-smoothing', '0.05'));
 const BUCKETS = parseInt(arg('buckets', String(1 << 16)), 10);
-const DIM = parseInt(arg('dim', '32'), 10);
-const HIDDEN = parseInt(arg('hidden', '32'), 10);
+const DIM = parseInt(arg('dim', '48'), 10);
+const HIDDEN = parseInt(arg('hidden', '48'), 10);
 const LR = parseFloat(arg('lr', '0.2'));
 const STRUCT_SWAP = parseFloat(arg('struct-swap', '0.25'));
 const WEIGHT_DECAY = parseFloat(arg('weight-decay', '5e-5'));
@@ -37,7 +37,7 @@ const rand = () => {
 interface CompactItem {
   label: 0 | 1;
   theme: string;
-  f: { ids: Uint32Array; dense: Float32Array };
+  f: HashedFeatures;
 }
 
 console.log(`Đang nạp và số hóa dữ liệu huấn luyện (${SAMPLES.toLocaleString()} mẫu)...`);
@@ -71,11 +71,23 @@ for (let epoch = 1; epoch <= EPOCHS; epoch++) {
   for (const item of trainSet) {
     // "Tráo cấu trúc": 25% mẫu mượn đặc trưng cấu trúc của một mẫu ngẫu nhiên khác (bất kể lớp),
     // buộc mạng phải đọc nội dung chữ thay vì chỉ dựa vào hình dạng trang
-    let input = rand() < STRUCT_SWAP ? { ids: item.f.ids, dense: trainSet[Math.floor(rand() * trainSet.length)].f.dense } : item.f;
+    let input: HashedFeatures = rand() < STRUCT_SWAP
+      ? { ids: item.f.ids, weights: item.f.weights, dense: trainSet[Math.floor(rand() * trainSet.length)].f.dense }
+      : item.f;
     // Word dropout: 20% mẫu bị rơi ngẫu nhiên một phần từ vựng, giúp mô hình mạnh mẽ khi gặp trang thiếu từ
     if (rand() < 0.20 && input.ids.length > 2) {
-      const kept = Array.from(input.ids).filter(() => rand() > 0.35);
-      input = { ids: new Uint32Array(kept.length ? kept : [input.ids[0]]), dense: input.dense };
+      const keptIndices: number[] = [];
+      for (let k = 0; k < input.ids.length; k++) {
+        if (rand() > 0.35) keptIndices.push(k);
+      }
+      if (!keptIndices.length) keptIndices.push(0);
+      const keptIds = new Uint32Array(keptIndices.length);
+      const keptWeights = input.weights ? new Float32Array(keptIndices.length) : undefined;
+      for (let k = 0; k < keptIndices.length; k++) {
+        keptIds[k] = input.ids[keptIndices[k]];
+        if (keptWeights && input.weights) keptWeights[k] = input.weights[keptIndices[k]];
+      }
+      input = { ids: keptIds, weights: keptWeights, dense: input.dense };
     }
     loss += trainStep(m, input, item.label === 1 ? 1 - SMOOTH : SMOOTH, LR * (1 - step / totalSteps) + 1e-4, x, h, dh, dx, WEIGHT_DECAY);
     step++;
