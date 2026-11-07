@@ -5,7 +5,7 @@ import { BlockedTargetError, FetchRedirectError, resolvePublicAddress, safeFetch
 // Bật cờ cho phép quét nội dung các trang có chứng chỉ tự ký hoặc lỗi TLS
 // (Độ hợp lệ của TLS vẫn được kiểm tra độc lập và trừ điểm tại probeTls)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-import { TARGETED_BRAND_NAMES, getDomainParts, type DomainParts } from './domainRules.ts';
+import { TARGETED_BRAND_NAMES, getDomainParts, isTrustedHost, type DomainParts } from './domainRules.ts';
 import { predictPhishingProbability } from './urlModel.ts';
 import {
   checkSafeBrowsing,
@@ -59,6 +59,14 @@ export interface HtmlEvidence {
   botChallenge: boolean;
   /** Chủ đề lừa đảo nhận ra từ nội dung (đa ngôn ngữ) */
   scamThemes: ScamTheme[];
+  /** Dấu hiệu Single Page App (SPA) với HTML rỗng và script động */
+  isSpa: boolean;
+  /** Dấu hiệu giao diện lừa đảo dạng ảnh kèm ô nhập liệu */
+  imageDominantForm: boolean;
+  /** Đường dẫn Favicon trích xuất được */
+  faviconUrl: string | null;
+  /** Thương hiệu bị mạo danh qua biểu tượng Favicon */
+  faviconBrand: string | null;
 }
 
 export type ScamTheme = 'bank_login' | 'wallet_brand' | 'meta_support' | 'fake_download' | 'prize_scam';
@@ -182,7 +190,9 @@ export function htmlToMarkdown(html: string): string {
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
     .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, ' ')
     .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, ' ')
-    .replace(/<template\b[^>]*>[\s\S]*?<\/template>/gi, ' ');
+    .replace(/<template\b[^>]*>[\s\S]*?<\/template>/gi, ' ')
+    // Loại bỏ banner Cookie, GDPR, OnTrust, Modal che phủ gây nhiễu ngữ nghĩa
+    .replace(/<(?:div|section|aside|dialog)[^>]*(?:id|class)\s*=\s*["'][^"']*(?:cookie|gdpr|consent|onetrust|privacy-modal|cc-banner|cc-window)[^"']*["'][^>]*>[\s\S]*?<\/(?:div|section|aside|dialog)>/gi, ' ');
 
   // Tiêu đề h1..h6 -> Markdown heading
   s = s.replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi, (_, lvl, text) => {
@@ -312,6 +322,53 @@ export function analyzeHtml(html: string, pageUrl: string, ownerDomain: string):
   const lowerText = `${title} ${description} ${text.slice(0, 6000)}`.toLowerCase();
   const brandMentions = TARGETED_BRAND_NAMES.filter(b => b.length >= 5 && new RegExp(`\\b${b}\\b`, 'i').test(lowerText));
 
+  // Nhận diện Single Page Application (SPA như React, Vue, Next.js với HTML rỗng)
+  const hasSpaContainer = /<div\b[^>]*(?:id|class)\s*=\s*["'](?:root|app|__next|__nuxt)["']/i.test(html);
+  const isSpa = hasSpaContainer && text.length < 350;
+
+  // Nếu là SPA và chưa phát hiện thương hiệu trong HTML tĩnh, quét mã kịch bản inline/bundles
+  if (isSpa && brandMentions.length === 0 && scripts.length > 0) {
+    const lowerScripts = scripts.slice(0, 15000).toLowerCase();
+    for (const b of TARGETED_BRAND_NAMES) {
+      if (b.length >= 5 && new RegExp(`\\b${b}\\b`, 'i').test(lowerScripts)) {
+        brandMentions.push(b);
+      }
+    }
+  }
+
+  // Phát hiện giao diện dạng ảnh kết hợp ô nhập liệu (image-dominant form) né bộ lọc văn bản
+  const imgCount = (html.match(/<img\b/gi) || []).length;
+  const imageDominantForm = text.length < 250 && imgCount >= 1 && (inputs.length >= 1 || hasPasswordField);
+
+  // Kênh tuồn dữ liệu ngầm (Telegram Bot API hoặc Discord Webhooks)
+  const telegramExfiltration = /api\.telegram\.org\/bot/i.test(html) || /discord(?:app)?\.com\/api\/webhooks/i.test(html);
+
+  // Trích xuất Favicon và kiểm tra giả mạo biểu tượng thương hiệu
+  const faviconHrefMatch = html.match(/<link\b[^>]*rel\s*=\s*["'](?:shortcut )?icon["'][^>]*href\s*=\s*["']([^"']+)["']/i) ||
+    html.match(/<link\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*rel\s*=\s*["'](?:shortcut )?icon["']/i);
+  const rawFavicon = faviconHrefMatch ? faviconHrefMatch[1].trim() : null;
+  let faviconUrl: string | null = null;
+  let faviconBrand: string | null = null;
+  if (rawFavicon) {
+    try {
+      const favU = new URL(rawFavicon, pageUrl);
+      faviconUrl = favU.href;
+      const favDomain = ownerDomainOf(favU.href, pageUrl);
+      const favLower = favU.href.toLowerCase();
+      for (const b of TARGETED_BRAND_NAMES) {
+        if (b.length >= 4 && favLower.includes(b) && !ownerDomain.includes(b)) {
+          faviconBrand = b;
+          break;
+        }
+      }
+      if (!faviconBrand && favDomain && favDomain !== ownerDomain && isTrustedHost(favDomain)) {
+        faviconBrand = favDomain;
+      }
+    } catch {
+      faviconUrl = rawFavicon;
+    }
+  }
+
   return {
     title,
     description,
@@ -321,7 +378,7 @@ export function analyzeHtml(html: string, pageUrl: string, ownerDomain: string):
     hasPasswordField,
     sensitiveFields,
     externalFormAction,
-    telegramExfiltration: /api\.telegram\.org\/bot/i.test(html),
+    telegramExfiltration,
     linkCount: hrefs.length,
     externalLinkRatio: linkDomains.length ? externalLinks / linkDomains.length : 0,
     nullLinkRatio: hrefs.length ? nullLinks / hrefs.length : 0,
@@ -336,6 +393,10 @@ export function analyzeHtml(html: string, pageUrl: string, ownerDomain: string):
     credentialPrompt: /\b(?:sign in|log ?in|verify your|confirm your|account (?:suspended|locked|limited)|unusual activity|đăng nhập|xác minh tài khoản|xác thực tài khoản|tài khoản (?:bị|đã bị) (?:khóa|tạm khóa)|cập nhật thông tin)\b/i.test(lowerText),
     botChallenge: /just a moment|attention required|checking your browser|cf-browser-verification|ddos-guard|client challenge|verify you are human|enable javascript and cookies to continue/i.test(`${title} ${text.slice(0, 500)}`),
     scamThemes: SCAM_THEME_PATTERNS.filter(([, re]) => re.test(lowerText)).map(([theme]) => theme),
+    isSpa,
+    imageDominantForm,
+    faviconUrl,
+    faviconBrand,
   };
 }
 

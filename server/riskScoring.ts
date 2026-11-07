@@ -273,6 +273,18 @@ export function scoreEvidence(e: SiteEvidence): RiskAssessment {
       add('brand_impersonation', -35, `Giả danh thương hiệu ${impersonated.slice(0, 3).join(', ')}`, 'Trang nhắc tới thương hiệu lớn và yêu cầu đăng nhập/xác minh, nhưng không chạy trên tên miền chính thức của thương hiệu đó.');
       if (html.hasPasswordField || html.sensitiveFields.length) capAt(15, 'phishing');
     }
+    if (html.faviconBrand && isAnonymousHost) {
+      add('favicon_impersonation', -35, `Biểu tượng (Favicon) giả mạo thương hiệu "${html.faviconBrand}"`, `Trang sử dụng favicon của "${html.faviconBrand}" trên tên miền không thuộc quyền sở hữu của thương hiệu này.`);
+      capAt(15, 'phishing');
+    }
+    if (html.imageDominantForm && isAnonymousHost) {
+      add('image_phishing', -25, 'Giao diện dạng hình ảnh kết hợp ô nhập liệu', 'Trang dùng hình ảnh thay vì văn bản HTML kèm ô nhập dữ liệu - thủ thuật né tránh bộ quét an ninh văn bản.');
+      if (html.hasPasswordField || html.sensitiveFields.length) capAt(20, 'phishing');
+    }
+    if (html.isSpa && html.telegramExfiltration && isAnonymousHost) {
+      add('spa_telegram_exfil', -45, 'Ứng dụng SPA âm thầm gửi dữ liệu qua Telegram/Discord', 'Trang SPA ẩn danh gửi thông tin người dùng trực tiếp tới máy chủ Telegram bot hoặc webhook.');
+      capAt(15, 'phishing');
+    }
     const totalContentLen = html.textLength + (html.description?.length || 0) + (html.title?.length || 0);
     if (isAnonymousHost && !html.botChallenge && totalContentLen >= 30) {
       const contentRisk = predictContentRisk(html);
@@ -335,6 +347,24 @@ export function scoreEvidence(e: SiteEvidence): RiskAssessment {
     if (html.contactInfo) { transparency += 3; positives.push('có thông tin liên hệ'); }
     if (transparency && !d.isFreeHosting) {
       add('transparency', Math.min(15, transparency), 'Minh bạch thông tin chủ sở hữu', positives.join(', ') + '.');
+    }
+
+    // Khiên bảo hộ doanh nghiệp minh bạch (SMB Transparency Shield)
+    // Bảo vệ các startup, doanh nghiệp vừa và nhỏ, cửa hàng hợp pháp (chưa có thứ hạng Tranco cao, tên miền trẻ)
+    // nhưng công khai thông tin pháp lý/MST/chính sách và hoàn toàn không có dấu hiệu mạo danh hay đánh cắp dữ liệu.
+    const hasTransparencyShield = (html.moitBadge || html.taxId || (html.contactInfo && html.policyLinks)) &&
+      !html.telegramExfiltration &&
+      html.sensitiveFields.length === 0 &&
+      impersonated.length === 0 &&
+      !html.faviconBrand &&
+      !gambling &&
+      !d.isFreeHosting &&
+      !d.isIp;
+
+    if (hasTransparencyShield && isAnonymousHost) {
+      const targetFloor = (html.moitBadge || html.taxId) ? 75 : 65;
+      floor = floor === null ? targetFloor : Math.max(floor, targetFloor);
+      add('smb_shield', 10, 'Kích hoạt Khiên bảo hộ doanh nghiệp minh bạch', 'Website công bố đầy đủ thông tin pháp lý/MST/chính sách/liên hệ và không có dấu hiệu mạo danh thương hiệu hay đánh cắp dữ liệu.');
     }
   }
 
