@@ -315,6 +315,19 @@ function putInCache(fingerprint: string, data: any) {
 // ============================================================================
 const TRANSLATION_CACHE = new Map<string, string>();
 
+/**
+ * Kiểm tra xem đoạn văn bản có phải là Tiếng Anh hay không.
+ * Nếu có dấu tiếng Việt -> Chắc chắn là Tiếng Việt (trả về false).
+ * Nếu không có dấu tiếng Việt và chứa các từ tiếng Anh phổ biến -> Trả về true.
+ */
+function isTextEnglish(text: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+  const hasVietnameseDiacritics = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(text);
+  if (hasVietnameseDiacritics) return false;
+  const englishWords = /\b(the|is|are|was|were|and|of|in|to|with|for|this|that|website|platform|operating|under|compliant|regulations|domain|legitimate|security|users|risk|compliance|based|online)\b/i;
+  return englishWords.test(text);
+}
+
 async function translateDynamicObject(obj: any, targetLang: string): Promise<any> {
   if (!obj || !targetLang) {
     return obj;
@@ -1878,13 +1891,62 @@ app.post('/api/scan', async (req, res) => {
     // ========================================================================
     // DEEP MODEL MODE: Gemini Multimodal Reasoning with Strict SLA Watchdog
     // ========================================================================
-    const personaInstructions = ({
-      consumer: 'Focus on clear, jargon-free explanations, phishing/scam risks, illegal gambling warnings, and practical safety advice for everyday web users and online shoppers.',
-      business: 'Focus on enterprise vendor risk management, supply chain integrity, regulatory compliance (VN Cybersecurity Law, GDPR, CFAA), and organizational liabilities.',
-      legal: 'Focus on in-depth regulatory compliance (Vietnamese Criminal Code Art. 321, 322; Vietnam Law on Cybersecurity 2018; Decree 13/2023/ND-CP; US UIGEA & CFAA; EU NIS2 & GDPR), contractual fine print, liability clauses, and dispute arbitration traps.',
-    } as Record<string, string>)[persona || 'consumer'];
+    const isVietnamese = !lang || lang.toLowerCase().startsWith('vi') || lang.toLowerCase() === 'vietnamese';
 
-    const systemPrompt = `You are Verity, a world-class Explainable AI (XAI) Trust, Safety, Transparency, and Legal Compliance Auditor.
+    let systemPrompt: string;
+    let promptText: string;
+
+    if (isVietnamese) {
+      const personaInstructionsVi: Record<string, string> = {
+        consumer: 'Tập trung vào ngôn từ phổ thông, dễ hiểu, cảnh báo nguy cơ lừa đảo, giả mạo, cờ bạc trực tuyến và đưa ra lời khuyên bảo vệ an toàn tài sản cá nhân.',
+        business: 'Tập trung vào thẩm định rủi ro đối tác, tính toàn vẹn chuỗi cung ứng, tuân thủ Luật An ninh mạng Việt Nam, Nghị định 13/2023/NĐ-CP và trách nhiệm pháp lý.',
+        legal: 'Tập trung vào căn cứ pháp luật Việt Nam (Điều 321, 322 Bộ luật Hình sự; Luật An ninh mạng 2018; Nghị định 13/2023/NĐ-CP), điều khoản dịch vụ (ToS) và miễn trừ trách nhiệm.',
+      };
+
+      systemPrompt = `Bạn là Verity XAI - Hệ thống Trí tuệ Nhân tạo thẩm định tính Minh bạch, An toàn và Phòng chống Lừa đảo Web.
+Nhiệm vụ của bạn là đánh giá toàn diện đối tượng số được cung cấp (URL, trang web, tài liệu, hợp đồng, hình ảnh).
+
+QUY TẮC BẮT BUỘC VỀ NGÔN NGỮ (QUAN TRỌNG NHẤT):
+1. TOÀN BỘ CÁC TRƯỜNG VĂN BẢN TRONG JSON (summary, keyFindings[].title, keyFindings[].explanation, keyFindings[].impact, safetyDetails.*, transparencyDetails.*, legalityDetails.*, xaiBreakdown[].factor, xaiBreakdown[].explanation, recommendations[].action, recommendations[].details) BẮT BUỘC 100% PHẢI ĐƯỢC VIẾT BẰNG TIẾNG VIỆT CHUẨN XÁC, TỰ NHIÊN, DỄ HIỂU.
+2. TUYỆT ĐỐI KHÔNG DÙNG TIẾNG ANH CHO NỘI DUNG GIẢI THÍCH (Trừ các ký hiệu kỹ thuật như SSL/TLS, HTTPS, OTP, 2FA, VNNIC). Dù trang web mục tiêu có nội dung tiếng Anh thì báo cáo trả lời của bạn VẪN PHẢI LÀ TIẾNG VIỆT HOÀN TOÀN.
+
+CHỈ THỊ PHÁP LUẬT VIỆT NAM:
+1. CỜ BẠC / CÁ CƯỢC / CASINO / GAME BÀI (m88, w88, kubet, 188bet, fb88, sunwin...):
+   - Vi phạm Điều 321, 322 BLHS và Điều 8 Luật An ninh mạng 2018. BẮT BUỘC trustScore: 10-15, status: "danger", legalityScore: 0-10.
+   - Nêu rõ không được Nhà nước công nhận và bị Tường lửa An ninh mạng Quốc gia phong tỏa.
+2. TRANG WEB UY TÍN / CHÍNH THỐNG / HỢP PHÁP:
+   - trustScore: 80-98, status: "safe", legalityScore: 85-98.
+   - Ghi nhận an toàn kỹ thuật, bảo vệ dữ liệu cá nhân theo Nghị định 13/2023/NĐ-CP.
+
+Đối tượng phục vụ: ${personaInstructionsVi[persona || 'consumer'] || personaInstructionsVi.consumer}
+
+Trả về DUY NHẤT định dạng JSON hợp lệ (không bọc trong markdown backticks):
+{
+  "targetTitle": "string",
+  "targetType": "${targetType}",
+  "trustScore": number (0 to 100),
+  "status": "safe" | "caution" | "danger",
+  "safetyScore": number (0 to 100),
+  "transparencyScore": number (0 to 100),
+  "legalityScore": number (0 to 100),
+  "summary": "Tóm tắt tiếng Việt 2-3 câu đánh giá độ tin cậy và bản chất trang web",
+  "keyFindings": [{ "title": "Tiêu đề tiếng Việt", "category": "safety" | "transparency" | "legality", "severity": "high" | "medium" | "low" | "safe", "explanation": "Giải thích chi tiết tiếng Việt", "impact": "Tác động tiếng Việt" }],
+  "safetyDetails": { "threatIntelligence": "Đánh giá mối đe dọa tiếng Việt", "phishingHeuristics": "Đánh giá lừa đảo tiếng Việt", "domainReputation": "Uy tín tên miền tiếng Việt", "indicators": ["Chỉ số an toàn 1 tiếng Việt", "Chỉ số 2"] },
+  "transparencyDetails": { "biasAnalysis": "Độ khách quan tiếng Việt", "authenticity": "Độ xác thực tiếng Việt", "authorAndSource": "Chủ thể vận hành tiếng Việt", "deepfakeOrManipulationCheck": "Kiểm tra giả mạo tiếng Việt" },
+  "legalityDetails": { "termsAndPolicyFlags": "Đánh giá điều khoản tiếng Việt", "gdprAndCcpaCompliance": "Tuân thủ quyền riêng tư tiếng Việt", "vnDecree13Compliance": "Tuân thủ Nghị định 13/2023/NĐ-CP tiếng Việt", "liabilityLimits": "Giới hạn trách nhiệm tiếng Việt", "requiredDisclosures": "Công bố thông tin tiếng Việt" },
+  "xaiBreakdown": [{ "factor": "Yếu tố đánh giá tiếng Việt (ví dụ: An toàn kết nối & Mã hóa TLS, Minh bạch pháp lý)", "weight": number, "scoreContribution": "+XX", "explanation": "Giải thích điểm số tiếng Việt" }],
+  "recommendations": [{ "action": "Khuyến nghị hành động tiếng Việt", "priority": "urgent" | "recommended" | "optional", "details": "Chi tiết hướng dẫn tiếng Việt" }],
+  "confidenceLevel": number
+}`;
+      promptText = `Loại đối tượng: ${targetType}\nTên tham chiếu: ${targetTitle || targetValue || 'Tài liệu / Tệp đính kèm'}\nDữ liệu cần thẩm định:\n${targetValue}\n`;
+    } else {
+      const personaInstructions = ({
+        consumer: 'Focus on clear, jargon-free explanations, phishing/scam risks, illegal gambling warnings, and practical safety advice for everyday web users and online shoppers.',
+        business: 'Focus on enterprise vendor risk management, supply chain integrity, regulatory compliance (VN Cybersecurity Law, GDPR, CFAA), and organizational liabilities.',
+        legal: 'Focus on in-depth regulatory compliance (Vietnamese Criminal Code Art. 321, 322; Vietnam Law on Cybersecurity 2018; Decree 13/2023/ND-CP; US UIGEA & CFAA; EU NIS2 & GDPR), contractual fine print, liability clauses, and dispute arbitration traps.',
+      } as Record<string, string>)[persona || 'consumer'];
+
+      systemPrompt = `You are Verity, a world-class Explainable AI (XAI) Trust, Safety, Transparency, and Legal Compliance Auditor.
 Your mission is to perform a rigorous, multi-dimensional assessment of digital entities (URLs, online stores, contracts/ToS documents, news claims, digital media, or source code).
 
 CRITICAL STATUTORY COMPLIANCE DIRECTIVES:
@@ -1928,8 +1990,8 @@ Return strictly valid JSON conforming to this schema without markdown formatting
   "recommendations": [{ "action": "string", "priority": "urgent" | "recommended" | "optional", "details": "string" }],
   "confidenceLevel": number
 }`;
-
-    const promptText = `Target Type: ${targetType}\nTarget Reference: ${targetTitle || targetValue || 'Attached Media/Document'}\nInput Data:\n${targetValue}\n`;
+      promptText = `Target Type: ${targetType}\nTarget Reference: ${targetTitle || targetValue || 'Attached Media/Document'}\nInput Data:\n${targetValue}\n`;
+    }
 
     let contentsPayload: any;
     if (fileData && mimeType && mimeType.startsWith('image/')) {
@@ -2075,8 +2137,11 @@ Return strictly valid JSON conforming to this schema without markdown formatting
       };
     }
 
-    // Guarantee 100% of the verification report is translated strictly in the user's selected language
-    if (lang && !lang.toLowerCase().startsWith('vi') && lang.toLowerCase() !== 'vietnamese') {
+    // Đảm bảo 100% kết quả là Tiếng Việt nếu người dùng chọn Tiếng Việt (hoặc mặc định)
+    if (parsedReport && isVietnamese && isTextEnglish(parsedReport.summary)) {
+      console.log('[I18N Enforcement] 🇻🇳 Phát hiện báo cáo trả về tiếng Anh khi người dùng chọn Tiếng Việt. Tự động chuyển ngữ sang Tiếng Việt chuẩn...');
+      parsedReport = await translateDynamicObject(parsedReport, 'Vietnamese');
+    } else if (lang && !isVietnamese) {
       parsedReport = await translateDynamicObject(parsedReport, lang);
     }
 
@@ -2246,7 +2311,7 @@ app.post('/api/analyze', async (req, res) => {
         .replace(/\s{2,}/g, ' ')
         .trim();
 
-      pageContent = cleanText.slice(0, 6000);
+      pageContent = cleanText.slice(0, 1800);
       isLiveFetchSuccess = pageContent.length > 50;
     } catch (fetchErr: any) {
       pageContent = `[Lưu ý: Không thể tải trực tiếp HTML do máy chủ đích từ chối kết nối hoặc chặn bot. Lỗi: ${fetchErr?.message || 'Timeout'}]`;
@@ -2255,6 +2320,10 @@ app.post('/api/analyze', async (req, res) => {
     // --- Bước 2: Đưa NỘI DUNG THỰC TẾ vào Gemini AI để thẩm định ngữ nghĩa ---
     const systemPrompt = `Bạn là chuyên gia an ninh mạng, thẩm định uy tín, bảo mật và tuân thủ pháp lý website.
 Nhiệm vụ của bạn là ĐỌC KỸ TOÀN BỘ NỘI DUNG THỰC TẾ (Tiêu đề, mô tả, văn bản trang, các dịch vụ/nút bấm) được cung cấp để đánh giá toàn diện tính chất trang web.
+
+QUY TẮC BẮT BUỘC VỀ NGÔN NGỮ (QUAN TRỌNG NHẤT):
+1. TOÀN BỘ nội dung trả về trong JSON (summary, age_rating.label, age_rating.reason, certificates, usage_notes, red_flags, recommendations, ai_disclaimer) BẮT BUỘC 100% PHẢI LÀ TIẾNG VIỆT CHUẨN XÁC, TỰ NHIÊN, DỄ HIỂU.
+2. Dù website được phân tích có nội dung gốc bằng tiếng Anh hay bất kỳ tiếng nước ngoài nào, bạn PHẢI dịch thuật, tóm tắt và đánh giá hoàn toàn bằng TIẾNG VIỆT. TUYỆT ĐỐI KHÔNG DÙNG TIẾNG ANH trong các nội dung giải thích.
 
 QUY TẮC THẨM ĐỊNH:
 1. NẾU NỘI DUNG THỰC TẾ LÀ CỜ BẠC / CÁ CƯỢC / CASINO / GAME BÀI:
@@ -2269,29 +2338,29 @@ QUY TẮC THẨM ĐỊNH:
 3. NẾU NỘI DUNG LÀ WEBSITE THƯƠNG MẠI / DOANH NGHIỆP / CÔNG CỤ / DỊCH VỤ CÔNG HỢP PHÁP:
    - Có thông tin định danh chủ thể, chính sách sản phẩm rõ ràng: gán trust_score từ 75 đến 95, status "Safe". Đánh giá độ tuổi phù hợp (ví dụ "Mọi lứa tuổi (3+)" hoặc "13+ (Thanh thiếu niên)").
 
-Hãy trả về DUY NHẤT một JSON hợp lệ theo đúng cấu trúc sau:
+Hãy trả về DUY NHẤT một JSON hợp lệ theo đúng cấu trúc sau (không bọc trong markdown):
 {
   "trust_score": <số nguyên 0-100>,
   "status": <"Safe" | "Warning" | "Dangerous">,
-  "summary": <"Tóm tắt 2-3 câu dựa trên NỘI DUNG THỰC TẾ đọc được từ trang web">,
+  "summary": <"Tóm tắt 2-3 câu hoàn toàn bằng Tiếng Việt dựa trên NỘI DUNG THỰC TẾ đọc được từ trang web">,
   "age_rating": {
     "label": <"Mọi lứa tuổi (3+)" | "Thanh thiếu niên (13+)" | "Người trưởng thành (18+)" | "Cấm dưới 18 tuổi / Bất hợp pháp">,
-    "reason": <"Giải thích ngắn 1-2 câu về lý do xếp hạng độ tuổi">
+    "reason": <"Giải thích ngắn 1-2 câu hoàn toàn bằng Tiếng Việt về lý do xếp hạng độ tuổi">
   },
   "certificates": [
     {
-      "name": <"Tên chứng chỉ, ví dụ: TLS/HTTPS Mã hóa dữ liệu, Đăng ký Bộ Công Thương, Tín nhiệm mạng NCSC, v.v.">,
+      "name": <"Tên chứng chỉ bằng Tiếng Việt, ví dụ: TLS/HTTPS Mã hóa dữ liệu, Đăng ký Bộ Công Thương, Tín nhiệm mạng NCSC, v.v.">,
       "status": <"Verified" | "Not Detected" | "Warning">,
-      "details": <"Chi tiết ngắn gọn về tình trạng chứng nhận">
+      "details": <"Chi tiết ngắn gọn về tình trạng chứng nhận bằng Tiếng Việt">
     }
   ],
   "usage_notes": [
-    <"Lưu ý an toàn thực tế 1 khi sử dụng/giao dịch trên website">,
+    <"Lưu ý an toàn thực tế 1 khi sử dụng/giao dịch trên website bằng Tiếng Việt">,
     <"Lưu ý 2">,
     <"Lưu ý 3">
   ],
-  "red_flags": [<"Bằng chứng nội dung đáng ngờ 1">, ...],
-  "recommendations": [<"Lời khuyên hành động 1">, ...],
+  "red_flags": [<"Bằng chứng nội dung đáng ngờ bằng Tiếng Việt">],
+  "recommendations": [<"Lời khuyên hành động bằng Tiếng Việt">],
   "ai_disclaimer": "Mô hình AI hỗ trợ thẩm định dựa trên dữ liệu ngữ nghĩa và kỹ thuật tại thời điểm quét. AI đôi khi có thể có sai sót hoặc chưa bao quát hết mọi biến động; người dùng nên kết hợp kiểm tra thực tế trước các quyết định quan trọng."
 }`;
 
@@ -2299,7 +2368,9 @@ Hãy trả về DUY NHẤT một JSON hợp lệ theo đúng cấu trúc sau:
 TIÊU ĐỀ TRANG (PAGE TITLE): ${pageTitle || 'Không có'}
 MÔ TẢ TRANG (META DESCRIPTION): ${pageDescription || 'Không có'}
 NỘI DUNG VĂN BẢN ĐỌC ĐƯỢC TỪ TRANG WEB:
-${pageContent}`;
+${pageContent}
+
+YÊU CẦU ĐẶC BIỆT: Phải viết toàn bộ kết quả thẩm định bằng TIẾNG VIỆT 100%.`;
 
     console.log(`[Audit Engine] Bắt đầu thẩm định cho URL: ${targetUrl}`);
     console.log(`[Audit Engine] Tiêu đề cào được: "${pageTitle || 'N/A'}" (${pageContent.length} ký tự văn bản)`);
@@ -2328,6 +2399,29 @@ ${pageContent}`;
         const cleaned = aiExecution.text.replace(/```json\n?|```/g, '').trim();
         result = JSON.parse(cleaned);
         result.analysis_engine = engineLabel;
+      }
+
+      // Tự động kiểm tra và chuyển ngữ nếu AI trả về tiếng Anh
+      if (result && isTextEnglish(result.summary)) {
+        console.log('[/api/analyze] 🇻🇳 Phát hiện kết quả bằng tiếng Anh, tự động chuyển ngữ sang Tiếng Việt...');
+        try {
+          const transPrompt = `Bạn là chuyên gia an ninh mạng. Hãy dịch toàn bộ các trường text (summary, age_rating, certificates, usage_notes, red_flags, recommendations) trong JSON sau sang Tiếng Việt chuẩn mực, tự nhiên. Giữ nguyên cấu trúc JSON.
+JSON cần dịch:
+${JSON.stringify(result)}`;
+          const transRes = await generateGeminiWithFastFailover({
+            contents: transPrompt,
+            temperature: 0.1,
+            responseMimeType: 'application/json',
+            timeoutMs: 5000,
+          });
+          if (transRes?.text) {
+            const transParsed = JSON.parse(transRes.text.replace(/```json\n?|```/g, '').trim());
+            transParsed.analysis_engine = engineLabel;
+            result = transParsed;
+          }
+        } catch (transErr) {
+          console.warn('Failed to translate /api/analyze result to Vietnamese:', transErr);
+        }
       }
     }
 
