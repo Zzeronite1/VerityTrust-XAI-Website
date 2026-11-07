@@ -1,0 +1,24 @@
+{
+  "description": "Bộ dữ liệu có nhãn để đo độ chính xác của /api/analyze. label: safe = website hợp pháp, dangerous = cờ bạc/lừa đảo. Danh sách phishing được lấy trực tiếp từ OpenPhish lúc chạy (xem scripts/eval-accuracy.ts).",
+  "safe": [
+    "kenh14.vn", "genk.vn", "24h.com.vn", "vietnamplus.vn", "baomoi.com", "batdongsan.com.vn", "chotot.com",
+    "fahasa.com", "vietjetair.com", "vietnamairlines.com", "grab.com", "hasaki.vn", "concung.com", "pnj.com.vn",
+    "vinmec.com", "hust.edu.vn", "vnu.edu.vn", "thuvienphapluat.vn", "viettelpost.com.vn", "ghn.vn",
+    "vinfastauto.com", "vingroup.net", "topcv.vn", "vietcetera.com", "tinhte.vn", "voz.vn", "nhaccuatui.com",
+    "zingmp3.vn", "fptplay.vn", "galaxycine.vn", "cgv.vn", "highlandscoffee.com.vn", "guardian.com.vn",
+    "nguyenkim.com", "mediamart.vn", "phongvu.vn", "gearvn.com", "vnpt.com.vn", "mobifone.vn", "ssi.com.vn",
+    "vndirect.com.vn", "shopee.vn", "tiki.vn", "vnexpress.net", "vietcombank.com.vn", "momo.vn", "chinhphu.vn",
+    "k8s.io", "jboss.org", "sodexo.com", "stackoverflow.com", "reddit.com", "nytimes.com", "bbc.com",
+    "python.org", "npmjs.com", "docker.com", "spotify.com", "airbnb.com", "booking.com", "coursera.org",
+    "khanacademy.org", "adobe.com", "samsung.com", "dropbox.com", "notion.so", "figma.com", "canva.com",
+    "zoom.us", "slack.com", "medium.com", "imdb.com", "ebay.com", "etsy.com", "who.int", "un.org",
+    "openai.com", "anthropic.com", "cnn.com", "theguardian.com", "netflix.com", "paypal.com",
+    "https://en.wikipedia.org/wiki/Explode", "https://www.netflix.com/browse/genre/episode",
+    "https://calendly.com/booking-slot"
+  ],
+  "dangerous": [
+    "https://www.bet88.casino/", "https://www.m88sut.com/", "1xbet.com", "stake.com", "betway.com",
+    "pinnacle.com", "22bet.com", "melbet.com", "mostbet.com", "parimatch.com", "w88.com", "fun88.com",
+    "188bet.com", "kubet.com", "8xbet.com", "bet365.com", "sbobet.com", "dafabet.com"
+  ]
+}

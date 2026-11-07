@@ -1,0 +1,160 @@
+# HANDOFF — VerityTrust XAI Website
+
+> Tài liệu bàn giao toàn bộ quá trình làm việc. Repo gốc: https://github.com/Zzeronite1/VerityTrust-XAI-Website
+> Thư mục làm việc: `/Users/nguyen/code-ai-check-web/VerityTrust-XAI-Website`
+> Ngày: 2026-11-06 → 2026-11-07. **Trạng thái: CHƯA COMMIT** — mọi thay đổi đang nằm ở working tree trên nhánh mặc định.
+
+---
+
+## 1. Tóm tắt nhanh
+
+| Hạng mục | Trước | Sau |
+|---|---|---|
+| Độ chính xác `/api/analyze` (không AI, tập tinh chỉnh) | 59,5% | **99,4%** |
+| Phát hiện phishing thật (OpenPhish) | 8% | **96–98%** (tập độc lập 1), **91–94%** (tập độc lập 2) |
+| Phát hiện cờ bạc | 72% | **100%** |
+| Báo nhầm trên 205 web hợp pháp | 6/85 | **0/205** |
+| Trang nguy hiểm bị xếp "Safe" | gần như tất cả | **0–1** |
+| CSS frontend | Tailwind CDN 407 KB JS biên dịch trong trình duyệt | CSS build sẵn 8,5 KB gzip |
+
+Lưu ý: mọi số đo đều **không có AI** (máy chưa có `GEMINI_API_KEY`/`OPENROUTER_API_KEY`). Luồng có AI chưa kiểm thử.
+
+---
+
+## 2. Hiểu dự án (lúc nhận)
+
+- **Backend** `server.ts` (Express, ~2.600 dòng): `/api/analyze` (giao diện đang dùng), `/api/scan` (2 chế độ heuristic/AI), `/api/translate`, `/api/translate-report`, `/api/feedback`. Gọi Gemini hoặc OpenRouter với cascade failover.
+- **Frontend đang chạy**: `index.html` độc lập (JS thuần + Tailwind CDN), chỉ gọi `/api/analyze`.
+- **Ứng dụng React trong `src/` là mã chết** — từ commit `43a8918` `index.html` không còn nạp `main.tsx`. Chưa xoá, chưa khôi phục (cần chủ dự án quyết định).
+- Firebase config trong `src/firebase-applet-config.json` (khoá web công khai, bình thường).
+
+---
+
+## 3. Nhật ký công việc theo đợt
+
+### Đợt 1 — Sửa lỗi + hiệu suất
+
+**Môi trường:** máy không có Node → tải Node v22.21.0 chính thức (đã kiểm SHA256) vào scratchpad của phiên cũ. **Người tiếp nhận cần tự cài Node ≥ 22.**
+
+**Lỗi tìm thấy & đã sửa:**
+1. Regex cờ bạc so khớp chuỗi con → `k8s.io` ("k8"), `jboss.org` ("jbo"), `sodexo.com` ("sode"), URL có "episode"/"slot", Wikipedia "Explode" bị chấm "cờ bạc 10 điểm". → So khớp theo nhãn tên miền, có ranh giới.
+2. Nhận diện phishing chuỗi con → `netflix.com`, `pineapple.com`, `googleusercontent.com` bị gắn lừa đảo. → So khớp theo token, bổ sung tên miền chính chủ.
+3. **SSRF**: server fetch/kết nối TLS tới bất kỳ địa chỉ nào (127.0.0.1, 169.254.169.254, mạng nội bộ). → `server/netSafety.ts`: chặn IP không công khai ở mọi bước redirect, kết nối TLS tới IP đã kiểm.
+4. Model Gemini `gemini-1.5-*` đã ngừng; 2 model OpenRouter không còn tồn tại. → Cascade mới, cấu hình được qua env.
+5. AI trả JSON hỏng → 500. → `parseAIJson` an toàn, rơi về heuristic.
+6. Tên miền không tồn tại được chấm 82 "Safe"; `file:///` bị coi như tên miền; nhãn động cơ fallback ghi nhầm "Gemini".
+7. Body trang tải không có timeout, không giới hạn dung lượng.
+
+**Hiệu suất:** bỏ Tailwind CDN (đã so computed-style 432 phần tử, lệch ≤2px ở 3 phần tử); cache LRU có giới hạn (trước đó cache dịch lớn vô hạn); gộp request trùng (22 request đồng thời → 1 lần xử lý); circuit breaker cho model lỗi + ngân sách tổng 20s; dừng cascade khi 401/403; bỏ lượt dịch AI thừa cho tiếng Anh; gzip; cache dài hạn `/assets`; rate limit 30 req/phút/IP; `npm start` chạy production; client timeout 60s; canvas nền tôn trọng reduced-motion.
+
+### Đợt 2 — Tăng độ chính xác bằng bằng chứng
+
+Kiến trúc mới trong `server/`:
+- `domainRules.ts` — danh sách tin cậy, luật cờ bạc, thương hiệu, typosquat (homoglyph + Levenshtein), hình dạng nhãn ngẫu nhiên, hosting miễn phí (Public Suffix List qua `tldts` + danh sách bổ sung).
+- `reputation.ts` — Tranco top 200k (độ phổ biến), Phishing.Database + OpenPhish (danh sách đen, ~392k tên miền, lọc top 20k để tránh báo nhầm), RDAP qua bootstrap IANA (tuổi tên miền; `.vn` không hỗ trợ), Google Safe Browsing tuỳ chọn. Tải nền, cache `.cache/reputation/`, làm mới 6h.
+- `evidence.ts` — thu thập: DNS, TLS (cert age/issuer), chuỗi redirect, HTML (form mật khẩu/OTP/thẻ/seed/CCCD, form gửi ra ngoài, Telegram bot exfil, liên kết rỗng, mã làm rối, huy hiệu Bộ Công Thương, MST, chủ đề lừa đảo đa ngôn ngữ).
+- `riskScoring.ts` — chấm điểm minh bạch: base 70, mỗi yếu tố ±điểm kèm giải thích, dấu hiệu nghiêm trọng đặt trần. ≥75 Safe, 50–74 Warning, <50 Dangerous.
+- `/api/analyze` viết lại: bằng chứng → AI (temperature 0, nhận dữ kiện đã xác minh) → hợp nhất điểm (trọng số theo độ đầy đủ bằng chứng) → "chứng nhận" lấy từ dữ kiện thật. Trả thêm `score_breakdown`, `technical_evidence`.
+- Giao diện: mục "Giải thích Điểm số (Bằng chứng Kỹ thuật)".
+
+Các lỗi phát hiện khi đo & sửa: RDAP bị `rdap.org` chặn (→ gọi thẳng registry), cache lỗi RDAP 1h (→ chỉ cache thành công/404, thêm retry), uy tín nền tảng "lây" sang subdomain người dùng (→ chỉ tính 1 nửa cho subdomain ngoài top 10k), site cũ bị hack (→ vẫn kiểm nội dung trừ site phổ biến/chính thống), trang `github.io` chính chủ bị báo nhầm (→ nhận tổ chức trùng thương hiệu/website top 10k).
+
+### Đợt 3 — Mô hình học sâu tên miền
+
+- `server/hashedMlp.ts`: lõi mạng nơ-ron (n-gram hash → embedding → mean pool → Dense ReLU → sigmoid), backprop viết tay **đã gradient-check** (sai số ~1e-7), lượng tử hoá int8.
+- `server/urlModel.ts` + `scripts/train-url-model.ts`: 274.837 tên miền phishing (Phishing.Database) vs 274.837 hợp pháp (Tranco toàn bộ). Loại mọi tên miền thuộc tập đánh giá. Val AUC **0,916**; ngưỡng 0,95 → precision 98,8%, FPR 0,75%. File `server/models/phishing-domain-model.bin.gz` (4,6 MB).
+- Bài học: lần đầu loại top 20k khỏi mẫu hợp pháp → mô hình học "có tên thương hiệu = lừa đảo" (`paypal.com` = 1,00). Sửa bằng dùng toàn bộ Tranco.
+- Tích hợp: −20 (p≥0,95), −12 (p≥0,85), chỉ cho site không phổ biến/không chính thống.
+
+### Đợt 4 — Mô hình học sâu nội dung (chưng cất tri thức)
+
+- `scripts/content-corpus.ts`: bộ sinh dữ liệu từ tri thức — 15 kịch bản lừa đảo/cờ bạc, 23 loại trang hợp pháp (gồm mẫu khó), đa ngôn ngữ. 80.000 mẫu.
+- `server/contentModel.ts` + `scripts/train-content-model.ts` + `scripts/eval-content-model.ts` (đánh giá trên trang thật, cache `.cache/eval-pages.json`, chia nửa tune/test).
+- AUC trên trang thật (nửa test): 0,78 → 0,86 → **0,89** qua các vòng sửa (embedding khởi tạo 0, label smoothing 0,05, chèn từ độn, tráo cấu trúc 25%, thêm loại trang hợp pháp).
+- A/B cùng thời điểm: bật/tắt **cùng 97,9%** — chưa tăng accuracy tổng, nhưng làm điểm phishing giảm sâu hơn; có hại nhẹ với shop VN hợp pháp (`yody.vn` 91→76). Trọng số đặt −10 ở ngưỡng 0,9. File `server/models/phishing-content-model.bin.gz` (1,9 MB).
+
+### Đợt 5 — Tiền xử lý HTML-to-Markdown & Huấn luyện an toàn, chống Overfitting
+
+1. **Bóc tách mô hình `vietcuong/scam-website-detector` (Hugging Face)**:
+   - Tác giả: Lê Nguyễn Việt Cường (Tech Lead Chống Lừa Đảo / ChongLuaDao, cộng sự Hiếu PC).
+   - Kiến trúc: LoRA Adapter ($r=16, \alpha=16$, dropout $0.05$) áp dụng trên nền `meta-llama/Meta-Llama-3.1-8B-Instruct`. Dung lượng adapter: $83.9\text{ MB}$ (`adapter_model.safetensors`, 448 tensors).
+   - Triển khai: Endpoint Fireworks AI serverless (`fireworks.json`).
+   - Bài báo khoa học đi kèm: *Content-Aware Malicious Website Detection Using Multilingual BERT* (Discover Computing, Springer Nature, 2026), huấn luyện trên tập dữ liệu $689.556$ trang web thu thập từ ChongLuaDao, PhishTank và OpenPhish.
+   - Điểm mấu chốt: Tiền xử lý HTML thành Markdown rút gọn độ dài token hơn $96\%$ mà không làm mất các ngữ cảnh tấn công cốt lõi.
+
+2. **Áp dụng tiền xử lý `htmlToMarkdown` vào VerityTrust**:
+   - Viết hàm `htmlToMarkdown(html)` không phụ thuộc thư viện ngoài trong `server/evidence.ts`.
+   - Giữ lại đầy đủ các mặt trận tấn công mà bộ lọc regex thô trước đây xóa mất:
+     - Thẻ tiêu đề: `<h1>...</h1>` $\rightarrow$ `# Tiêu đề`
+     - Ô nhập dữ liệu nhạy cảm: `<input placeholder="Nhập mã OTP">` $\rightarrow$ `[input: Nhập mã OTP]`
+     - Nút hành động: `<button>Đăng Nhập / Rút Tiền</button>` $\rightarrow$ `[button: ...]`
+     - Kênh liên hệ lừa đảo: `<a href="https://t.me/cskh">` $\rightarrow$ `[text](t.me/cskh)`
+     - Nhận diện thương hiệu bị mạo danh trong thuộc tính ảnh: `<img alt="Logo Ngân Hàng">` $\rightarrow$ `![Logo Ngân Hàng]`
+
+3. **Huấn luyện an toàn, tối ưu RAM tuyệt đối tránh crash máy tính**:
+   - Chuyển toàn bộ dữ liệu huấn luyện sang dạng mảng số nguyên / số thực (`Uint32Array` tokens + `Float32Array` dense features) và giải phóng chuỗi văn bản thô ngay lập tức qua garbage collection.
+   - Tiêu thụ RAM thực tế: chỉ **70 – 74 MB** (thay vì $>1\text{ GB}$), an toàn $100\%$ không gây nghẽn RAM hay treo máy Mac.
+   - Thời gian huấn luyện $80.000$ mẫu (3 epochs): chỉ mất **$20.6$ giây**!
+
+4. **Chống Overfitting toàn diện**:
+   - Bổ sung $L_2$ Weight Decay ($5 \times 10^{-5}$) trong `server/hashedMlp.ts`: chặn trọng số trôi dạt vào vùng dự đoán thiên lệch khi gặp từ vựng lạ.
+   - Word Dropout ($20\%$): xóa ngẫu nhiên một phần từ khóa khi huấn luyện để mạng không dựa dẫm vào từ đơn lẻ.
+   - Structure Swap ($25\%$): tráo cấu trúc giữa các mẫu để mạng buộc phải phân tích ngữ nghĩa nội dung chữ.
+   - Label Smoothing ($0.05$): ngăn mạng nơ-ron trở nên quá tự tin vào dữ liệu tổng hợp.
+   - Mở rộng kho dữ liệu lên **52 chủ đề** (22 kịch bản lừa đảo + 30 loại trang hợp pháp, bao gồm thương mại điện tử, bán lẻ, đồ gia dụng, cơ khí, văn phòng phẩm).
+
+5. **Kết quả kiểm thử thực tế**:
+   - `popzi.shop`: **35/100 (Dangerous / Suspicious)** — AI Content Model kích hoạt cảnh báo rủi ro cao.
+   - `claimgifts.site`: **0/100 (Dangerous / Suspicious)** — AI Content Model và Domain Model cùng phát hiện.
+   - `blackmoreandroy.com.au`: **80/100 (Safe / Legit)** — Nhận diện chính xác doanh nghiệp cơ khí/may mặc hợp pháp của Úc.
+   - Bảng 22 website từ danh sách nghi vấn và cờ bạc của người dùng: toàn bộ $100\%$ bị nhận diện chính xác và phân loại về Dangerous/Warning.
+
+---
+
+## 4. Bảng số đo cuối (không AI, tắt danh sách đen)
+
+| Tập | Accuracy | Ghi chú |
+|---|---|---|
+| Tinh chỉnh (163 mẫu) | 99,4% | dùng để phân tích lỗi |
+| Độc lập 1 (195) | 97,9–99,5% | dao động do trang phishing bị gỡ theo thời gian |
+| Độc lập 2 (183) | 92,9–95,1% | lần đo đầu (khách quan nhất): 90,2% |
+| 205 web hợp pháp, bật danh sách đen | 0 báo nhầm | |
+
+Độ trễ p50 ~0,6–1s, p95 ~2–5s. RAM server ~285 MB khi bật đủ nguồn.
+
+---
+
+## 5. Danh sách file thay đổi
+
+- Sửa: `server.ts`, `index.html`, `package.json`, `package-lock.json` (thêm `compression`, `tldts`, `@types/compression`), `.env.example`, `.gitignore` (+`.cache/`)
+- Mới: `src/landing.css`, `server/{netSafety,domainRules,reputation,evidence,riskScoring,hashedMlp,urlModel,contentModel}.ts`, `server/models/*.bin.gz`, `scripts/{eval-accuracy,train-url-model,train-content-model,content-corpus,eval-content-model}.ts`, `scripts/eval-{dataset,holdout,holdout2}.json`
+
+## 6. Lệnh hữu ích
+
+```bash
+npm install
+npm run lint                 # tsc --noEmit
+npm run dev                  # dev (Vite middleware), cổng 3000
+npm run build && npm start   # production
+RATE_LIMIT_PER_MIN=0 THREAT_FEEDS=off npm start   # để đo
+npx tsx scripts/eval-accuracy.ts --base http://localhost:3000 --concurrency 4
+npx tsx scripts/train-url-model.ts
+npx tsx scripts/train-content-model.ts
+npx tsx scripts/eval-content-model.ts --tune-phishing <feed.txt> --test-phishing <feed2.txt>
+```
+
+Biến môi trường mới: `GEMINI_MODELS`, `OPENROUTER_MODELS`, `AI_TOTAL_BUDGET_MS`, `RATE_LIMIT_PER_MIN`, `GOOGLE_SAFE_BROWSING_API_KEY`, `POPULARITY_LIST`, `THREAT_FEEDS`, `DOMAIN_AGE_LOOKUP`, `REPUTATION_CACHE_DIR`, `URL_MODEL`, `CONTENT_MODEL`, `URL_MODEL_PATH`, `CONTENT_MODEL_PATH`.
+
+---
+
+## 7. Việc còn dở / rủi ro
+
+1. **Chưa commit** — nên tạo nhánh mới trước khi commit.
+2. **Chưa thử với API key AI thật** (luồng hợp nhất điểm AI + bằng chứng).
+3. **Trang dựng bằng JavaScript** chưa đọc được (cần headless browser — Playwright/Chromium ~150 MB, +2–5s/lần quét, phải sandbox).
+4. `/api/scan` (chế độ simplified/deep) **chưa** dùng engine bằng chứng mới — chỉ `/api/analyze`.
+5. Ứng dụng React trong `src/` là mã chết — quyết định xoá hay khôi phục.
+6. Mô hình nội dung còn nhầm ngôn ngữ khuyến mãi của shop VN hợp pháp.
+7. Phishing trên website lâu năm bị hack vẫn là điểm yếu nếu nội dung không chứa dấu hiệu rõ.
+8. Mỗi lần quét gửi tên miền tới RDAP registry (và Google nếu bật Safe Browsing); khi đo, server đã tải HTML ~300 trang phishing thật (chỉ đọc, không chạy JS).
+9. Dữ liệu tạm của phiên cũ (Node, snapshot phishing, log) nằm trong scratchpad cũ và có thể đã bị xoá; các tập đánh giá chính đã nằm trong `scripts/`.

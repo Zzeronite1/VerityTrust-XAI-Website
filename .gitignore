@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Bộ đệm danh sách danh tiếng (Tranco, phishing feeds)
+.cache/
