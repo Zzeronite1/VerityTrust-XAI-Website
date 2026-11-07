@@ -136,7 +136,7 @@ async function callOpenRouter(modelName: string, options: {
   }
 
   const controller = new AbortController();
-  const timeoutMs = options.timeoutMs ?? 8000;
+  const timeoutMs = options.timeoutMs ?? (IS_OPENROUTER ? 15000 : 8000);
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
@@ -228,7 +228,7 @@ async function generateAIWithFastFailover(options: {
   const isOR = IS_OPENROUTER;
   const defaultModels = isOR ? OPENROUTER_MODELS_CASCADE : GOOGLE_GEMINI_MODELS_CASCADE;
   const models = options.models || defaultModels;
-  const timeoutMs = options.timeoutMs ?? 8000;
+  const timeoutMs = options.timeoutMs ?? (isOR ? 15000 : 8000);
   const providerLabel = isOR ? 'OpenRouter AI' : 'Google Gemini AI';
 
   for (const modelName of models) {
@@ -2018,7 +2018,7 @@ Return strictly valid JSON conforming to this schema without markdown formatting
       systemInstruction: systemPrompt,
       responseMimeType: 'application/json',
       temperature: 0.2,
-      timeoutMs: 8000,
+      timeoutMs: IS_OPENROUTER ? 15000 : 8000,
     });
 
     if (aiExecution && aiExecution.text) {
@@ -2381,7 +2381,7 @@ YÊU CẦU ĐẶC BIỆT: Phải viết toàn bộ kết quả thẩm định b�
       systemInstruction: systemPrompt,
       responseMimeType: 'application/json',
       temperature: 0.2,
-      timeoutMs: 8000,
+      timeoutMs: IS_OPENROUTER ? 15000 : 8000,
     });
 
     let result: any = null;
