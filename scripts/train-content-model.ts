@@ -60,6 +60,7 @@ const valSet: CompactItem[] = generateCorpus(Math.round(SAMPLES / 8), 777).map(s
 
 // ---------------------------------------------------------------- trang thật (tuỳ chọn)
 const realTest: CompactItem[] = [];
+const realTrain: CompactItem[] = [];
 let realTrainCount = 0;
 if (REAL) {
   const ownerBucket = (owner: string) => {
@@ -78,6 +79,7 @@ if (REAL) {
       // Lặp lại trang thật REAL_WEIGHT lần để chúng có tiếng nói tương xứng bên cạnh dữ liệu tổng hợp
       for (let k = 0; k < REAL_WEIGHT; k++) trainSet.push(item);
       realTrainCount++;
+      realTrain.push(item);
     }
   }
   console.log(`Trang thật: ${realTrainCount.toLocaleString()} trang huấn luyện (x${REAL_WEIGHT}), ${realTest.length.toLocaleString()} trang kiểm tra (tên miền chưa từng thấy).`);
@@ -125,7 +127,9 @@ for (let epoch = 1; epoch <= EPOCHS; epoch++) {
   }
   const scores = valSet.map(v => forward(m, v.f));
   const labels = valSet.map(v => v.label);
-  const realAuc = realTest.length ? `, AUC trang thật ${auc(realTest.map(v => forward(m, v.f)), realTest.map(v => v.label)).toFixed(4)}` : '';
+  // Khoảng cách giữa hai số này mới cho biết có học thuộc hay không: val AUC đo trên dữ liệu tổng hợp nên rất dễ đạt 1
+  const realTrainAuc = realTrain.length ? `, AUC trang thật (train) ${auc(realTrain.map(v => forward(m, v.f)), realTrain.map(v => v.label)).toFixed(4)}` : '';
+  const realAuc = realTest.length ? `${realTrainAuc}, AUC trang thật ${auc(realTest.map(v => forward(m, v.f)), realTest.map(v => v.label)).toFixed(4)}` : '';
   console.log(`Epoch ${epoch}/${EPOCHS}: loss ${(loss / trainSet.length).toFixed(4)}, val AUC ${auc(scores, labels).toFixed(4)}, val acc ${metricsAt(scores, labels, 0.5).accuracy}${realAuc} (${((Date.now() - t0) / 1000).toFixed(1)}s, RAM: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB)`);
 }
 

@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { parse as parseDomain } from 'tldts';
 
 // ============================================================================
@@ -62,7 +64,19 @@ export const GAMBLING_KEYWORDS_CONTENT = [
   'betting odds', 'live betting', 'free bets', 'free spins', 'place your bet', 'bet now', 'slot games',
   'blackjack', 'online lottery', 'lottery', 'wingo',
   // Tiếng Trung (nhiều trang cờ bạc nhắm tới châu Á)
-  '真人视讯', '娱乐场', '滚球', '赔率', '体育投注', '百家乐', '老虎机', '博彩', '棋牌', '电子游艺', '彩票投注', '下注'
+  '真人视讯', '娱乐场', '滚球', '赔率', '体育投注', '百家乐', '老虎机', '博彩', '棋牌', '电子游艺', '彩票投注', '下注',
+  // Các ngôn ngữ khác hay gặp trong tập đánh giá (bị lọt khi chỉ có Việt/Anh/Trung)
+  'slot gacor', 'gacor', 'maxwin', 'situs slot', 'slot online', 'judi online', 'togel', 'link alternatif', 'rtp slot',
+  'สล็อต', 'คาสิโน', 'บาคาร่า', 'แทงบอล', 'เว็บพนัน',
+  'ক্যাসিনো', 'বেটিং', 'স্লট',
+  // Không dùng từ đơn "satta"/"matka": trùng tên báo Ấn Độ (Loksatta, Jansatta) và tiếng Phần Lan ("matka" = chuyến đi)
+  'satta king', 'satta matka', 'kalyan matka', 'matka result', 'disawar',
+  'apostas esportivas', 'cassino', 'rodadas grátis', 'apuestas deportivas', 'casino en línea', 'tragamonedas', 'giros gratis',
+  'казино', 'игровые автоматы', 'ставки на спорт', 'букмекер', 'фриспины',
+  'bahis', 'canlı casino', 'deneme bonusu',
+  'spielautomaten', 'freispiele', 'sportwetten', 'casino en ligne', 'paris sportifs', 'machines à sous',
+  '카지노', '토토사이트', 'オンラインカジノ',
+  'pokies', 'bookmaker', 'gamstop', 'no deposit bonus', 'welcome bonus', 'real money'
 ];
 export const GAMBLING_CONTENT_MIN_HITS = 2;
 
@@ -119,6 +133,19 @@ export const PROHIBITED_GAMBLING_BETTING_DOMAINS = new Set([
 // Tên miền đầy đủ trong danh sách đen (khớp chính xác hoặc subdomain)
 const GAMBLING_BLACKLIST_DOMAINS = [...PROHIBITED_GAMBLING_BETTING_DOMAINS].filter(d => d.includes('.'));
 
+// Tên miền cờ bạc rà soát thủ công trong Tranco: nhiều tên miền cũ bị mua lại nên vẫn được cộng điểm độ phổ biến.
+// Thiếu hoặc lỗi file thì chỉ mất danh sách này, không được làm dừng máy chủ.
+function loadAuditedGamblingDomains(): Set<string> {
+  try {
+    const file = path.resolve(process.env.GAMBLING_AUDIT_PATH || 'server/data/tranco-gambling-audit.txt');
+    return new Set(fs.readFileSync(file, 'utf8').split('\n').map(l => l.trim().toLowerCase()).filter(l => l && !l.startsWith('#')));
+  } catch (err: any) {
+    console.warn(`[Domain Rules] Không đọc được danh sách cờ bạc đã rà soát (${err?.message || err}).`);
+    return new Set();
+  }
+}
+const AUDITED_GAMBLING_DOMAINS = loadAuditedGamblingDomains();
+
 // Thương hiệu nhà cái (không kèm TLD) - khớp ở ĐẦU một nhãn tên miền, vd: m88vin.com, link-fb88.net, sunwin20.club
 const GAMBLING_BRAND_TOKENS = [...new Set([
   ...[...PROHIBITED_GAMBLING_BETTING_DOMAINS].filter(d => !d.includes('.')),
@@ -166,6 +193,7 @@ export function isGamblingHost(hostname: string): boolean {
   if (PROHIBITED_GAMBLING_BETTING_DOMAINS.has(host)) return true;
   const registrable = parseDomain(host).domain || host;
   if (GAMBLING_EXACT_DOMAINS.has(registrable)) return true;
+  if (AUDITED_GAMBLING_DOMAINS.has(registrable) || AUDITED_GAMBLING_DOMAINS.has(host)) return true;
   if (GAMBLING_BRAND_SUBSTRINGS.some(brand => registrable.includes(brand))) return true;
   if (GAMBLING_BLACKLIST_DOMAINS.some(d => host === d || host.endsWith('.' + d))) return true;
   const parts = host.split('.').flatMap(label => [label, ...label.split('-').slice(1)]);
@@ -197,6 +225,30 @@ export function isGamblingTarget(targetUrl: string, hostname: string, pageConten
   const hits = countGamblingContentHits(pageContent);
   const label = parseDomain(host).domainWithoutSuffix || host;
   return hits >= GAMBLING_CONTENT_MIN_HITS || (hits >= 1 && label.includes('bet'));
+}
+
+// Khuôn shop giả hàng loạt: tiêu đề chỉ là chính tên miền, kèm câu miễn phí vận chuyển theo ngưỡng đơn hàng
+const FREE_SHIPPING_THRESHOLD = /free shipping on (?:all )?orders? over|kostenloser versand ab|livraison gratuite d[eè]s|spedizione gratuita per ordini superiori|env[ií]o gratis (?:en pedidos )?(?:a partir de|desde)/i;
+
+export function isFakeShopTemplate(title: string, text: string, ownerDomain: string): boolean {
+  const compact = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const parts = parseDomain(ownerDomain);
+  const label = compact(parts.domainWithoutSuffix || ownerDomain);
+  const shownTitle = compact(title);
+  if (!label || (shownTitle !== label && shownTitle !== compact(ownerDomain))) return false;
+  return FREE_SHIPPING_THRESHOLD.test(text.slice(0, 400));
+}
+
+// Rao bán hàng cấm: chỉ khớp cụm từ mua bán trực tiếp, không khớp bài báo chỉ nhắc tới các mặt hàng này
+const PROHIBITED_GOODS: Array<[string, RegExp]> = [
+  ['súng/đạn', /\bbuy\b[^.\n]{0,40}\b(?:guns?|firearms?|handguns?|pistols?|rifles?|ammo|ammunition)\b[^.\n]{0,20}\bonline\b/i],
+  ['cần sa', /\b(?:buy|order)\b[^.\n]{0,30}\b(?:weed|cannabis|marijuana)\b[^.\n]{0,25}\bonline\b|\bcannabis dispensary that ships\b|\bmail order (?:weed|marijuana)\b/i],
+  ['bằng cấp/giấy tờ giả', /làm (?:bằng|giấy tờ|chứng chỉ)[^.\n]{0,25}giả[^.\n]{0,40}(?:giá|bao nhiêu|uy tín|liên hệ|dịch vụ|zalo)|\bbuy (?:a )?fake (?:diploma|degree|passport|id)\b|\bfake (?:diplomas?|passports?) for sale\b/i],
+];
+
+export function detectProhibitedGoods(title: string, text: string): string | null {
+  const content = `${title}\n${text.slice(0, 2000)}`;
+  return PROHIBITED_GOODS.find(([, re]) => re.test(content))?.[0] ?? null;
 }
 
 // Brands frequently targeted by typosquatting, deceptive subdomains, and credential theft

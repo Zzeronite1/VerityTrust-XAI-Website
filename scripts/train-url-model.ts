@@ -3,6 +3,7 @@
  *
  *   npx tsx scripts/train-url-model.ts [--epochs 3] [--buckets 131072] [--dim 32] [--hidden 32]
  *     [--pdb phishing-list.txt]... [--tranco top-1m.csv|.zip] [--majestic off] [--umbrella off]
+ *     [--extra-phish list.txt]... [--max-per-class 400000]
  *     [--exclude urls.txt]... [--out server/models/...]
  *
  * Dữ liệu:
@@ -118,11 +119,15 @@ async function loadData() {
       // bỏ qua dòng hỏng
     }
   };
-  for (const f of ['eval-dataset.json', 'eval-holdout.json', 'eval-holdout2.json', 'set-b-legit-gambling.json']) {
-    const p = path.join(import.meta.dirname, '..', 'eval', 'datasets', f);
-    if (!fs.existsSync(p)) continue;
-    const ds = JSON.parse(fs.readFileSync(p, 'utf8'));
-    [...(ds.safe || []), ...(ds.dangerous || [])].forEach(addExcluded);
+  const evalDir = path.join(import.meta.dirname, '..', 'eval', 'datasets');
+  for (const f of fs.readdirSync(evalDir)) {
+    const content = fs.readFileSync(path.join(evalDir, f), 'utf8');
+    if (f.endsWith('.json')) {
+      const ds = JSON.parse(content);
+      [...(ds.safe || []), ...(ds.dangerous || [])].forEach(addExcluded);
+    } else {
+      content.split('\n').map(l => l.trim()).filter(Boolean).forEach(addExcluded);
+    }
   }
   for (const f of argList('exclude')) fs.readFileSync(f, 'utf8').split('\n').map(l => l.trim()).filter(Boolean).forEach(addExcluded);
 
@@ -132,7 +137,12 @@ async function loadData() {
   const positives = new Set<string>();
   const pdbIcann = new Set<string>();
   const seenHosts = new Set<string>();
-  for (const text of phishTexts) {
+  // Blocklist cộng đồng nhiều nhiễu hơn: bỏ mọi tên miền nằm trong Tranco top 200k thay vì chỉ top 10k
+  const sources = [
+    ...phishTexts.map(text => ({ text, maxTrustedRank: 10_000 })),
+    ...argList('extra-phish').map(f => ({ text: fs.readFileSync(f, 'utf8'), maxTrustedRank: 200_000 })),
+  ];
+  for (const { text, maxTrustedRank } of sources) {
     for (const raw of text.split('\n')) {
       const host = hostOf(raw);
       if (!host || seenHosts.has(host)) continue;
@@ -142,7 +152,7 @@ async function loadData() {
       const owner = modelInputDomain(host);
       // Subdomain bị lạm dụng của nền tảng lớn (docs.google.com...) không phải "tên miền lừa đảo"
       const rank = topRank.get(parts.icannDomain);
-      if (!parts.isFreeHosting && rank !== undefined && rank <= 10_000) continue;
+      if (!parts.isFreeHosting && rank !== undefined && rank <= maxTrustedRank) continue;
       if (excluded.has(owner) || excluded.has(parts.icannDomain)) continue;
       positives.add(owner);
     }
@@ -162,8 +172,15 @@ async function loadData() {
     const j = Math.floor(rand() * (i + 1));
     [negativesAll[i], negativesAll[j]] = [negativesAll[j], negativesAll[i]];
   }
-  const negatives = negativesAll.slice(0, positives.size);
-  const positiveList = [...positives].slice(0, negatives.length);
+  // Trộn trước khi cắt để mọi nguồn đều có mặt; --max-per-class giữ RAM trong giới hạn
+  const positivesAll = [...positives];
+  for (let i = positivesAll.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [positivesAll[i], positivesAll[j]] = [positivesAll[j], positivesAll[i]];
+  }
+  const maxPerClass = parseInt(arg('max-per-class', '0'), 10) || Infinity;
+  const negatives = negativesAll.slice(0, Math.min(positivesAll.length, maxPerClass));
+  const positiveList = positivesAll.slice(0, negatives.length);
   console.log(`Dữ liệu: ${positiveList.length.toLocaleString()} tên miền lừa đảo (từ ${seenHosts.size.toLocaleString()} host), ${negatives.length.toLocaleString()} tên miền hợp pháp (từ ${negativeSet.size.toLocaleString()} tên miền khả dụng), loại ${excluded.size} tên miền thuộc tập đánh giá.`);
   return { positives: positiveList, negatives, excluded };
 }
@@ -200,7 +217,10 @@ async function main() {
     }
     const valScores = val.map(s => forward(m, s.f));
     const valLabels = val.map(s => s.y);
-    console.log(`Epoch ${epoch}/${EPOCHS}: loss ${(loss / train.length).toFixed(4)}, val AUC ${auc(valScores, valLabels).toFixed(4)}, val acc ${metricsAt(valScores, valLabels, 0.5).accuracy} (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
+    // So với val AUC để biết mô hình học thuộc (train cao hơn hẳn) hay chưa học đủ (cả hai cùng thấp)
+    const trainSample = train.slice(0, 50_000);
+    const trainAuc = auc(trainSample.map(s => forward(m, s.f)), trainSample.map(s => s.y));
+    console.log(`Epoch ${epoch}/${EPOCHS}: loss ${(loss / train.length).toFixed(4)}, train AUC ${trainAuc.toFixed(4)}, val AUC ${auc(valScores, valLabels).toFixed(4)}, val acc ${metricsAt(valScores, valLabels, 0.5).accuracy} (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
   }
 
   const valScores = val.map(s => forward(m, s.f));
@@ -240,7 +260,7 @@ async function main() {
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   const buf = serializeModel(m, {
     trainedAt: new Date().toISOString().slice(0, 10),
-    sources: ['Phishing.Database phishing-domains-ACTIVE (nhãn 1)', 'Tranco top-1m hạng 20k-1M (nhãn 0)'],
+    sources: ['Phishing.Database (nhãn 1)', ...argList('extra-phish').map(f => path.basename(f) + ' (nhãn 1)'), 'Tranco + Majestic + Umbrella (nhãn 0)'],
     trainSamples: train.length,
     epochs: EPOCHS,
     validation,

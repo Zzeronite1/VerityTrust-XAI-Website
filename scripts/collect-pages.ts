@@ -2,6 +2,7 @@
  * Thu thập HTML trang THẬT để huấn luyện mô hình nội dung (scripts/train-content-model.ts --real ...).
  *
  *   npx tsx scripts/collect-pages.ts [--phishing 4000] [--legit 4000] [--concurrency 24] [--out .cache/training/real-pages.jsonl]
+ *     [--phishing-file urls.txt]  (thay nguồn mặc định bằng danh sách URL/tên miền nguy hiểm, giữ nguyên thứ tự)
  *
  * - Lừa đảo: URL từ Phishing.Database (phishing-links-ACTIVE) + OpenPhish
  * - Hợp pháp: tên miền từ Tranco/Majestic (ưu tiên ~30% tên miền .vn), lấy trang chủ
@@ -36,6 +37,8 @@ const HEADERS = {
 
 // Trang không còn nội dung gốc: dùng làm mẫu sẽ dạy sai mô hình
 const DEAD_PAGE = /suspended|has been (?:disabled|removed|deactivated|blocked)|account (?:suspended|disabled)|domain (?:is )?for sale|buy this domain|parked|coming soon|under construction|404|not found|403|forbidden|access denied|bad gateway|service unavailable|site not found|deceptive site|phishing (?:warning|alert)|this site can.?t be reached|default (?:web )?page|it works!|welcome to nginx|index of \//i;
+
+const CLOAKED_PAGE = /^(?:yahoo|google|bing|yandex|tìm kiếm - microsoft bing|index of|welcome to nginx|it works|apache|404|403|fatal error|redirecting|please wait|loading|verify you are human|just a moment|site is created|success!|website takedown|domain information|about this domain|caddy works|my blog|hello world)/i;
 
 let seed = 4242;
 const rand = () => {
@@ -78,11 +81,15 @@ const exclude = (u: string) => {
   const o = ownerOf(url);
   if (o) excludedOwners.add(o);
 };
-for (const f of ['eval-dataset.json', 'eval-holdout.json', 'eval-holdout2.json', 'set-b-legit-gambling.json']) {
-  const p = path.join(import.meta.dirname, '..', 'eval', 'datasets', f);
-  if (!fs.existsSync(p)) continue;
-  const ds = JSON.parse(fs.readFileSync(p, 'utf8'));
-  [...(ds.safe || []), ...(ds.dangerous || [])].forEach(exclude);
+const evalDir = path.join(import.meta.dirname, '..', 'eval', 'datasets');
+for (const f of fs.readdirSync(evalDir)) {
+  const content = fs.readFileSync(path.join(evalDir, f), 'utf8');
+  if (f.endsWith('.json')) {
+    const ds = JSON.parse(content);
+    [...(ds.safe || []), ...(ds.dangerous || [])].forEach(exclude);
+  } else {
+    content.split('\n').map(l => l.trim()).filter(Boolean).forEach(exclude);
+  }
 }
 const evalCache = path.resolve('.cache/eval-pages.json');
 if (fs.existsSync(evalCache)) Object.keys(JSON.parse(fs.readFileSync(evalCache, 'utf8'))).forEach(exclude);
@@ -99,7 +106,10 @@ const pdbText = (await cached(`${PDB}/phishing-links-ACTIVE.txt`, 'phishing-link
 const phishText = `${openphishText}\n${pdbText}`;
 const urlsOf = (text: string) => [...new Set(text.split('\n').map(l => l.trim()).filter(l => /^https?:\/\//.test(l)))]
   .filter(u => !excludedUrls.has(u) && !excludedOwners.has(ownerOf(u) || ''));
-const phishCandidates = [...shuffle(urlsOf(openphishText)), ...shuffle(urlsOf(pdbText))];
+const phishingFile = arg('phishing-file', '');
+const phishCandidates = phishingFile
+  ? urlsOf(fs.readFileSync(phishingFile, 'utf8').split('\n').map(l => l.trim()).filter(Boolean).map(l => (/^https?:\/\//.test(l) ? l : `https://${l}/`)).join('\n'))
+  : [...shuffle(urlsOf(openphishText)), ...shuffle(urlsOf(pdbText))];
 {
   const all = [...new Set(openphishText.split('\n').map(l => l.trim()).filter(l => /^https?:\/\//.test(l)))];
   console.log(`OpenPhish: ${all.length} URL, trùng URL tập đánh giá ${all.filter(u => excludedUrls.has(u)).length}, trùng tên miền tập đánh giá ${all.filter(u => !excludedUrls.has(u) && excludedOwners.has(ownerOf(u) || '')).length}, còn dùng được ${urlsOf(openphishText).length}`);
@@ -154,7 +164,9 @@ async function collect(url: string, label: 0 | 1) {
       const looksDead = DEAD_PAGE.test(html.title) || DEAD_PAGE.test(html.text.slice(0, 200));
       // Trang lừa đảo chuyển hướng về site hợp pháp (vd google.com) không còn là mẫu lừa đảo
       const bouncedToLegit = label === 1 && finalOwner !== owner && /google|microsoft|apple|amazon|facebook|bing|yahoo|cloudflare/.test(finalOwner || '');
-      if (!html.botChallenge && html.textLength >= 30 && !looksDead && !bouncedToLegit) {
+      // Tên miền xấu nhưng trang hiện ra không có gì xấu (che giấu nội dung, trang mặc định): dùng làm mẫu lừa đảo sẽ dạy sai
+      const cloaked = label === 1 && CLOAKED_PAGE.test(html.title);
+      if (!html.botChallenge && html.textLength >= 30 && !looksDead && !bouncedToLegit && !cloaked) {
         record = { ...record, finalUrl: res.finalUrl, status: res.status, html };
         counts[label]++;
         perOwner.set(owner, (perOwner.get(owner) || 0) + 1);

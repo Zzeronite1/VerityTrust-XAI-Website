@@ -6,6 +6,8 @@ import {
   findImpersonatedBrand,
   findTyposquatTarget,
   isGamblingTarget,
+  isFakeShopTemplate,
+  detectProhibitedGoods,
   isTrustedHost,
 } from './domainRules.ts';
 import type { SiteEvidence } from './evidence.ts';
@@ -320,6 +322,17 @@ export function scoreEvidence(e: SiteEvidence): RiskAssessment {
       }
       if (themes.has('fake_download')) {
         add('fake_download', -15, 'Trang tải ứng dụng "chính thức" trên tên miền không chính thức', 'Kẻ gian thường dựng trang tải app giả (ví crypto, ngân hàng) để phát tán ứng dụng chứa mã độc.');
+      }
+      const prohibitedGoods = detectProhibitedGoods(html.title, html.text);
+      if (prohibitedGoods) {
+        add('prohibited_goods', -40, `Rao bán hàng cấm: ${prohibitedGoods}`, 'Trang trực tiếp chào bán mặt hàng bị cấm mua bán trên mạng; đây cũng là vỏ bọc lừa đảo chiếm đoạt tiền đặt cọc phổ biến.');
+        capAt(25, 'malicious');
+      }
+      // Shop thật cũng có thể trùng khuôn này, nên chỉ áp dụng khi tên miền mới hoặc không rõ tuổi
+      const recentlyRegistered = ageDays === null || ageDays < 2 * 365;
+      if (recentlyRegistered && isFakeShopTemplate(html.title, html.text, d.ownerDomain)) {
+        add('fake_shop_template', -40, 'Trang khớp khuôn shop giả hàng loạt', 'Tiêu đề chỉ là tên miền, kèm câu miễn phí vận chuyển theo ngưỡng đơn hàng: khuôn được dùng lặp lại trên rất nhiều tên miền shop lừa đảo.');
+        capAt(30, 'malicious');
       }
       if (themes.has('prize_scam')) {
         add('prize_scam', -20, 'Thông báo trúng thưởng/nhận quà', 'Nội dung dụ dỗ nhận thưởng - kịch bản lừa đảo kinh điển.');
