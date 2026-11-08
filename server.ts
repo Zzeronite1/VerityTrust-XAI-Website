@@ -10,9 +10,10 @@ import net from 'node:net';
 import tls from 'node:tls';
 import crypto from 'node:crypto';
 import { BlockedTargetError, resolvePublicAddress, safeFetch } from './server/netSafety.ts';
-import { collectEvidence, type SiteEvidence } from './server/evidence.ts';
-import { scoreEvidence, statusFromScore, type RiskAssessment } from './server/riskScoring.ts';
-import { queryJevDecision, applyJevDecision, type JevDecisionResult } from './server/jevDecision.ts';
+import { type SiteEvidence } from './server/evidence.ts';
+import { statusFromScore, type RiskAssessment } from './server/riskScoring.ts';
+import { type JevDecisionResult } from './server/jevDecision.ts';
+import { runScanPipeline, type PipelineResult } from './server/scanPipeline.ts';
 import { startReputationFeeds } from './server/reputation.ts';
 import {
   GAMBLING_KEYWORDS_CONTENT,
@@ -85,7 +86,7 @@ setInterval(() => {
   }
 }, 60_000).unref();
 
-app.use(['/api/scan', '/api/analyze', '/api/translate', '/api/translate-report'], aiRateLimit);
+app.use(['/api/scan', '/api/analyze', '/api/explain', '/api/translate', '/api/translate-report'], aiRateLimit);
 
 // Detect API Key and Provider (OpenRouter vs Google Gemini)
 const RAW_API_KEY = (process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || '').trim();
@@ -1900,12 +1901,11 @@ async function computeScanReport(params: {
       targetUrl = 'https://' + targetUrl;
     }
     try {
-      evidence = await collectEvidence(targetUrl);
-      assessment = scoreEvidence(evidence);
-      jevDecision = await queryJevDecision(evidence, assessment);
-      if (jevDecision) {
-        assessment = applyJevDecision(assessment, jevDecision);
-      }
+      // Cùng đường ống nhiều tầng với /api/analyze (dừng sớm, headless khi cần, trọng tài vùng xám)
+      const pipeline = await runScanPipeline(targetUrl);
+      evidence = pipeline.evidence;
+      assessment = pipeline.assessment;
+      jevDecision = pipeline.jevDecision;
     } catch (err: any) {
       if (err instanceof BlockedTargetError) {
         throw err;
@@ -2669,129 +2669,26 @@ function buildScanReportFromEvidence(
   };
 }
 
+// Ngữ cảnh của lần quét gần nhất cho mỗi URL, để Tầng 5 (/api/explain) giải thích mà không phải quét lại
+const EXPLAIN_CONTEXT = new LRUCache<{ pipeline: PipelineResult; result: any }>(500, 30 * 60 * 1000);
+
 async function computeAnalyzeResult(targetUrl: string, hostname: string): Promise<any> {
   console.log(`[Audit Engine] Bắt đầu thẩm định cho URL: ${targetUrl}`);
 
-  // --- Bước 1: Thu thập bằng chứng kỹ thuật + nội dung trang, chấm điểm theo bằng chứng ---
-  const evidence = await collectEvidence(targetUrl);
-  let assessment = scoreEvidence(evidence);
-
-  // --- Tầng trọng tài quyết định Jev / OpenJev (nếu cấu hình JEV_MODE=api hoặc JEV_MODE=openjev) ---
-  const jevDecision = await queryJevDecision(evidence, assessment);
-  if (jevDecision) {
-    assessment = applyJevDecision(assessment, jevDecision);
-  }
-
+  // --- Tầng 0 -> 4: đường ống quét nhiều tầng với dừng sớm (server/scanPipeline.ts) ---
+  const pipeline = await runScanPipeline(targetUrl);
+  const { evidence, assessment, jevDecision } = pipeline;
   const html = evidence.html;
   const pageTitle = html?.title || '';
   const pageDescription = html?.description || '';
-  const pageContent = html
-    ? html.text.slice(0, 4000)
-    : `[Không tải được nội dung trang: ${evidence.http.fetchError || evidence.dns.error || 'không phản hồi'}]`;
-  console.log(`[Audit Engine] Bằng chứng: ${assessment.score}/100 (${assessment.verdict}, độ đầy đủ ${Math.round(assessment.confidence * 100)}%) trong ${evidence.collectedMs}ms${jevDecision ? ` [Jev: ${jevDecision.engine}]` : ''}`);
+  console.log(`[Audit Engine] ${assessment.score}/100 (${assessment.verdict}) - dừng ở Tầng ${pipeline.exitTier}: ${pipeline.exitReason} (${pipeline.totalMs}ms)`);
 
-  // --- Bước 2: AI thẩm định ngữ nghĩa trên NỘI DUNG THỰC TẾ + BẰNG CHỨNG ĐÃ XÁC MINH ---
-  let result: any = null;
-  let aiScore: number | null = null;
-  let engineLabel = '';
-  const skipAI = evidence.dns.nxdomain || evidence.dns.privateResolution;
-
-  if (!skipAI) {
-    const systemPrompt = `Bạn là chuyên gia an ninh mạng, thẩm định uy tín, bảo mật và tuân thủ pháp lý website.
-Nhiệm vụ của bạn là ĐỌC KỸ NỘI DUNG THỰC TẾ (tiêu đề, mô tả, văn bản trang) và các DỮ KIỆN KỸ THUẬT ĐÃ ĐƯỢC HỆ THỐNG XÁC MINH để đánh giá website.
-
-QUY TẮC BẮT BUỘC VỀ NGÔN NGỮ (QUAN TRỌNG NHẤT):
-1. TOÀN BỘ nội dung trả về trong JSON (summary, age_rating.label, age_rating.reason, usage_notes, red_flags, recommendations) BẮT BUỘC 100% PHẢI LÀ TIẾNG VIỆT CHUẨN XÁC, TỰ NHIÊN, DỄ HIỂU.
-2. Dù website có nội dung gốc bằng ngôn ngữ nào, bạn PHẢI tóm tắt và đánh giá hoàn toàn bằng TIẾNG VIỆT.
-
-NGUYÊN TẮC SUY LUẬN:
-- Dữ kiện kỹ thuật là sự thật đã kiểm chứng: KHÔNG được mâu thuẫn hay bịa thêm (ví dụ không được nói "có đăng ký Bộ Công Thương" nếu dữ kiện ghi "không").
-- Chỉ dựa vào bằng chứng có thật; nếu thiếu thông tin hãy nói rõ là chưa xác minh được, không suy đoán theo hướng an toàn.
-- Dấu hiệu lừa đảo mạnh: trang yêu cầu đăng nhập/OTP/thẻ/cụm từ khôi phục ví trên tên miền KHÔNG phải tên miền chính thức của thương hiệu được nhắc tới; tên miền mới đăng ký; subdomain ẩn danh trên hosting miễn phí; thông báo trúng thưởng, khoá tài khoản, giao hàng thất bại, yêu cầu thanh toán phí nhỏ; nội dung sao chép giao diện thương hiệu lớn.
-- Website phổ biến, lâu năm, minh bạch chủ sở hữu và không có dấu hiệu trên: đánh giá an toàn.
-
-THANG ĐIỂM:
-1. CỜ BẠC / CÁ CƯỢC / CASINO / GAME BÀI ĐỔI THƯỞNG (Điều 321, 322 BLHS & Điều 8 Luật An ninh mạng 2018): trust_score 5-15, status "Dangerous", age_rating.label "Cấm dưới 18 tuổi / Bất hợp pháp".
-2. LỪA ĐẢO / GIẢ MẠO / THU THẬP THÔNG TIN: trust_score dưới 20, status "Dangerous".
-3. CHƯA ĐỦ CĂN CỨ / CÓ DẤU HIỆU BẤT THƯỜNG NHẸ: trust_score 50-74, status "Warning".
-4. HỢP PHÁP, MINH BẠCH: trust_score 75-98, status "Safe".
-
-Hãy trả về DUY NHẤT một JSON hợp lệ theo đúng cấu trúc sau (không bọc trong markdown):
-{
-  "trust_score": <số nguyên 0-100>,
-  "status": <"Safe" | "Warning" | "Dangerous">,
-  "category": <"legitimate" | "phishing" | "scam" | "gambling" | "malware" | "adult" | "unknown">,
-  "summary": <"Tóm tắt 2-3 câu bằng Tiếng Việt dựa trên nội dung thực tế và dữ kiện kỹ thuật">,
-  "age_rating": {
-    "label": <"Mọi lứa tuổi (3+)" | "Thanh thiếu niên (13+)" | "Người trưởng thành (18+)" | "Cấm dưới 18 tuổi / Bất hợp pháp">,
-    "reason": <"Giải thích ngắn 1-2 câu bằng Tiếng Việt">
-  },
-  "usage_notes": [<"Lưu ý an toàn thực tế 1">, <"Lưu ý 2">, <"Lưu ý 3">],
-  "red_flags": [<"Bằng chứng đáng ngờ cụ thể bằng Tiếng Việt">],
-  "recommendations": [<"Lời khuyên hành động bằng Tiếng Việt">]
-}`;
-
-    const userPrompt = `URL kiểm tra: ${targetUrl}
-DỮ KIỆN KỸ THUẬT ĐÃ XÁC MINH:
-${describeEvidenceForAI(evidence, assessment)}
-
-TIÊU ĐỀ TRANG: ${pageTitle || 'Không có'}
-MÔ TẢ TRANG: ${pageDescription || 'Không có'}
-NỘI DUNG VĂN BẢN ĐỌC ĐƯỢC TỪ TRANG WEB:
-${pageContent}
-
-YÊU CẦU: Viết toàn bộ kết quả thẩm định bằng TIẾNG VIỆT 100%.`;
-
-    const aiExecution = await generateGeminiWithFastFailover({
-      contents: userPrompt,
-      systemInstruction: systemPrompt,
-      responseMimeType: 'application/json',
-      temperature: 0,
-      timeoutMs: IS_OPENROUTER ? 15000 : 8000,
-    });
-
-    if (aiExecution && aiExecution.text) {
-      engineLabel = aiExecution.provider === 'openrouter'
-        ? `OpenRouter AI (${aiExecution.modelName})`
-        : `Google Gemini AI (${aiExecution.modelName})`;
-      result = parseAIJson(aiExecution.text);
-      if (!result || typeof result !== 'object' || Array.isArray(result) || typeof result.trust_score !== 'number') {
-        console.warn('[/api/analyze] ⚠️ AI trả về JSON không hợp lệ, dùng kết quả chấm điểm theo bằng chứng.');
-        result = null;
-      }
-
-      // Tự động kiểm tra và chuyển ngữ nếu AI trả về tiếng Anh
-      if (result && isTextEnglish(result.summary)) {
-        console.log('[/api/analyze] 🇻🇳 Phát hiện kết quả bằng tiếng Anh, tự động chuyển ngữ sang Tiếng Việt...');
-        try {
-          const transPrompt = `Bạn là chuyên gia an ninh mạng. Hãy dịch toàn bộ các trường text (summary, age_rating, usage_notes, red_flags, recommendations) trong JSON sau sang Tiếng Việt chuẩn mực, tự nhiên. Giữ nguyên cấu trúc JSON.
-JSON cần dịch:
-${JSON.stringify(result)}`;
-          const transRes = await generateGeminiWithFastFailover({
-            contents: transPrompt,
-            temperature: 0,
-            responseMimeType: 'application/json',
-            timeoutMs: 5000,
-          });
-          const transParsed = parseAIJson(transRes?.text);
-          if (transParsed && typeof transParsed === 'object' && typeof transParsed.trust_score === 'number') {
-            result = transParsed;
-          }
-        } catch (transErr) {
-          console.warn('Failed to translate /api/analyze result to Vietnamese:', transErr);
-        }
-      }
-      if (result) aiScore = Math.max(0, Math.min(100, Math.round(result.trust_score)));
-    }
-  }
-
-  // --- Bước 3: Hợp nhất kết quả ---
-  const aiSaysGambling = result?.category === 'gambling' && !assessment.isTrusted;
-  if (assessment.isGambling || aiSaysGambling) {
+  let result: any;
+  if (assessment.isGambling) {
     result = {
       trust_score: 10,
       status: 'Dangerous',
-      analysis_engine: engineLabel ? `${engineLabel} + Chốt chặn Pháp lý (Penalty Gate)` : 'Hệ thống Thẩm định An ninh mạng (Penalty Gate)',
+      analysis_engine: 'Verity Evidence Engine + Chốt chặn Pháp lý (Penalty Gate)',
       summary: `NGUY HIỂM / VI PHẠM PHÁP LUẬT: Qua phân tích tên miền và nội dung thực tế ("${pageTitle || hostname}"), hệ thống phát hiện website này đang tổ chức và quảng bá các dịch vụ cá cược, sòng bài trực tuyến (casino) hoặc trò chơi đổi thưởng tiền thật. Đây là các hành vi bị nghiêm cấm theo quy định pháp luật Việt Nam.`,
       age_rating: {
         label: 'Cấm dưới 18 tuổi / Bất hợp pháp',
@@ -2822,30 +2719,21 @@ ${JSON.stringify(result)}`;
       analyzed_url: targetUrl
     };
   } else {
-    const finalScore = aiScore !== null ? fuseScores(aiScore, assessment) : assessment.score;
-    const finalStatus = statusFromScore(finalScore);
-    const guidance = guidanceForStatus(finalStatus);
-    const aiAgrees = !!result && result.status === finalStatus;
-    const aiFlags: string[] = Array.isArray(result?.red_flags) ? result.red_flags.filter((f: any) => typeof f === 'string') : [];
+    const guidance = guidanceForStatus(assessment.status);
     result = {
-      trust_score: finalScore,
-      status: finalStatus,
-      analysis_engine: engineLabel
-        ? `${engineLabel} + Verity Evidence Engine`
-        : (jevDecision
-          ? `${jevDecision.engine === 'jev-api' ? 'Jev AI (TypeSafe)' : 'OpenJev Gateway'} + Verity Evidence Engine`
-          : 'Verity Evidence Engine (DNS · TLS · RDAP · Tranco · Threat Intel)'),
-      // Khi AI và bằng chứng không cùng kết luận, ưu tiên tóm tắt theo bằng chứng và giữ nhận định của AI làm bổ sung
-      summary: result && aiAgrees
-        ? result.summary
-        : evidenceSummary(evidence, assessment) + (result?.summary ? ` Phân tích nội dung (AI): ${result.summary}` : ''),
-      age_rating: finalStatus === 'Dangerous'
+      trust_score: assessment.score,
+      status: assessment.status,
+      analysis_engine: jevDecision
+        ? `${jevDecision.engine === 'jev-api' ? 'Jev AI (TypeSafe)' : 'OpenJev Gateway'} + Verity Evidence Engine`
+        : 'Verity Evidence Engine (DNS · TLS · RDAP · Tranco · Threat Intel · Deep Learning)',
+      summary: evidenceSummary(evidence, assessment),
+      age_rating: assessment.status === 'Dangerous'
         ? { label: 'Cảnh báo Rủi ro cao / Hạn chế', reason: 'Trang có dấu hiệu lừa đảo hoặc nguy hại, không an toàn cho bất kỳ lứa tuổi nào.' }
-        : (result?.age_rating?.label ? result.age_rating : { label: 'Mọi lứa tuổi (3+)', reason: 'Chưa phát hiện nội dung không phù hợp với trẻ em.' }),
+        : { label: 'Mọi lứa tuổi (3+)', reason: 'Chưa phát hiện nội dung không phù hợp với trẻ em.' },
       certificates: evidenceCertificates(evidence),
-      usage_notes: Array.isArray(result?.usage_notes) && result.usage_notes.length && aiAgrees ? result.usage_notes : guidance.usage_notes,
-      red_flags: [...new Set([...evidenceRedFlags(assessment), ...aiFlags])].slice(0, 8),
-      recommendations: Array.isArray(result?.recommendations) && result.recommendations.length && aiAgrees ? result.recommendations : guidance.recommendations,
+      usage_notes: guidance.usage_notes,
+      red_flags: evidenceRedFlags(assessment),
+      recommendations: guidance.recommendations,
       ai_disclaimer: AI_DISCLAIMER,
     };
   }
@@ -2853,11 +2741,17 @@ ${JSON.stringify(result)}`;
   // Bằng chứng giải thích được (XAI) cho giao diện và tích hợp
   result.score_breakdown = {
     evidence_score: assessment.score,
-    ai_score: aiScore,
     verdict: assessment.verdict,
     evidence_completeness: Math.round(assessment.confidence * 100),
     factors: assessment.factors,
     jev_decision: jevDecision || undefined,
+  };
+  result.pipeline = {
+    exit_tier: pipeline.exitTier,
+    exit_reason: pipeline.exitReason,
+    total_ms: pipeline.totalMs,
+    rendered_by_headless: pipeline.renderedByHeadless,
+    tiers: pipeline.tiers,
   };
   result.technical_evidence = {
     owner_domain: evidence.domain.ownerDomain,
@@ -2872,8 +2766,78 @@ ${JSON.stringify(result)}`;
     collected_ms: evidence.collectedMs,
   };
   result.analyzed_url = targetUrl;
+  EXPLAIN_CONTEXT.set(targetUrl, { pipeline, result: structuredClone(result) });
   return result;
 }
+
+// ============================================================================
+// TẦNG 5: GIẢI THÍCH BẰNG NGÔN NGỮ TỰ NHIÊN (chỉ khi người dùng yêu cầu)
+// LLM chỉ diễn giải bảng bằng chứng thành lời khuyên dễ hiểu - KHÔNG thay đổi điểm số.
+// ============================================================================
+function explainWithoutAI(ctx: { pipeline: PipelineResult; result: any }): string {
+  const { assessment } = ctx.pipeline;
+  const bad = assessment.factors.filter(f => f.delta < 0);
+  const good = assessment.factors.filter(f => f.delta > 0);
+  const lines = [
+    ctx.result.summary,
+    bad.length ? `Những điểm đáng lo: ${bad.map(f => `${f.label.toLowerCase()} (${f.detail})`).join('; ')}.` : 'Không phát hiện dấu hiệu rủi ro đáng kể.',
+    good.length ? `Những điểm tích cực: ${good.map(f => f.label.toLowerCase()).join('; ')}.` : '',
+    `Kết luận được đưa ra ở Tầng ${ctx.pipeline.exitTier}: ${ctx.pipeline.exitReason}.`,
+    ...(ctx.result.recommendations || []),
+  ];
+  return lines.filter(Boolean).join('\n\n');
+}
+
+app.post('/api/explain', async (req, res) => {
+  try {
+    const { url } = req.body as { url?: string };
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ error: 'Thiếu trường "url".' });
+    }
+    let targetUrl = url.trim();
+    if (!/^https?:\/\//i.test(targetUrl)) targetUrl = 'https://' + targetUrl;
+    targetUrl = new URL(targetUrl).href;
+
+    let ctx = EXPLAIN_CONTEXT.get(targetUrl);
+    if (!ctx) {
+      await computeAnalyzeResult(targetUrl, new URL(targetUrl).hostname.toLowerCase());
+      ctx = EXPLAIN_CONTEXT.get(targetUrl);
+    }
+    if (!ctx) return res.status(500).json({ error: 'Không tạo được ngữ cảnh giải thích.' });
+
+    const { evidence, assessment } = ctx.pipeline;
+    const aiResponse = await generateAIWithFastFailover({
+      systemInstruction: `Bạn là chuyên gia an ninh mạng giải thích kết quả thẩm định website cho người dùng phổ thông Việt Nam.
+Kết luận và điểm số đã được hệ thống chốt dựa trên bằng chứng kỹ thuật: KHÔNG được thay đổi, phản bác hay bịa thêm bằng chứng.
+Viết 2-4 đoạn ngắn bằng tiếng Việt dễ hiểu: website này là gì, vì sao bị đánh giá như vậy (dựa đúng các yếu tố được liệt kê), người dùng nên làm gì.
+Trả về JSON: {"explanation": "<văn bản, các đoạn cách nhau bằng \\n\\n>"}`,
+      contents: `URL: ${targetUrl}
+KẾT LUẬN ĐÃ CHỐT: ${ctx.result.trust_score}/100 - ${ctx.result.status} (dừng ở Tầng ${ctx.pipeline.exitTier}: ${ctx.pipeline.exitReason})
+DỮ KIỆN KỸ THUẬT:
+${describeEvidenceForAI(evidence, assessment)}
+TIÊU ĐỀ TRANG: ${evidence.html?.title || 'Không có'}
+NỘI DUNG TRANG (trích):
+${evidence.html?.text.slice(0, 3000) || '[Không tải được nội dung]'}`,
+      responseMimeType: 'application/json',
+      temperature: 0.2,
+      timeoutMs: IS_OPENROUTER ? 15000 : 8000,
+    });
+    const parsed = parseAIJson<{ explanation?: string }>(aiResponse?.text);
+    if (aiResponse && parsed?.explanation) {
+      return res.json({
+        explanation: parsed.explanation,
+        engine: aiResponse.provider === 'openrouter' ? `OpenRouter AI (${aiResponse.modelName})` : `Google Gemini AI (${aiResponse.modelName})`,
+      });
+    }
+    return res.json({
+      explanation: explainWithoutAI(ctx),
+      engine: RAW_API_KEY ? 'Verity Evidence Engine (AI tạm thời không phản hồi)' : 'Verity Evidence Engine (chưa cấu hình API key AI)',
+    });
+  } catch (err: any) {
+    console.error('[/api/explain] Error:', err);
+    return res.status(500).json({ error: 'Không tạo được giải thích.', message: err?.message || 'Unknown error' });
+  }
+});
 
 // Explicit SEO routes for search engines (Googlebot, Bingbot, etc.)
 app.get('/robots.txt', (_req, res) => {

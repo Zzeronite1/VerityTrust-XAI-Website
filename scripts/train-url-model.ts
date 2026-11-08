@@ -1,12 +1,13 @@
 /**
  * Huấn luyện mô hình học sâu nhận diện tên miền lừa đảo (xem server/urlModel.ts).
  *
- *   npx tsx scripts/train-url-model.ts [--epochs 4] [--buckets 131072] [--dim 32] [--hidden 32]
- *     [--pdb phishing-domains.txt] [--tranco top-1m.csv|.zip] [--exclude urls.txt]... [--out server/models/...]
+ *   npx tsx scripts/train-url-model.ts [--epochs 3] [--buckets 131072] [--dim 32] [--hidden 32]
+ *     [--pdb phishing-list.txt]... [--tranco top-1m.csv|.zip] [--majestic off] [--umbrella off]
+ *     [--exclude urls.txt]... [--out server/models/...]
  *
  * Dữ liệu:
- * - Nhãn 1: Phishing.Database (phishing-domains-ACTIVE), quy về "tên miền chủ sở hữu"
- * - Nhãn 0: toàn bộ Tranco top 1 triệu. Cần có cả tên miền chính chủ của thương hiệu lớn (paypal.com...) để mô hình
+ * - Nhãn 1: Phishing.Database (domains-ACTIVE + links-ACTIVE + links-INACTIVE), quy về "tên miền chủ sở hữu"
+ * - Nhãn 0: Tranco + Majestic Million + Cisco Umbrella (mỗi nguồn 1 triệu). Cần có cả tên miền chính chủ của thương hiệu lớn (paypal.com...) để mô hình
  *   học được "thương hiệu + đuôi chính thức = hợp pháp", thay vì "cứ có tên thương hiệu là lừa đảo".
  * - Loại khỏi CẢ HAI phía: mọi tên miền trong các tập đánh giá (scripts/eval-*.json và các file --exclude)
  *   để số đo end-to-end không bị rò rỉ dữ liệu.
@@ -53,20 +54,58 @@ async function download(url: string, file: string): Promise<Buffer> {
   return buf;
 }
 
-async function loadData() {
-  const pdbText = arg('pdb', '')
-    ? fs.readFileSync(arg('pdb', ''), 'utf8')
-    : (await download('https://raw.githubusercontent.com/Phishing-Database/Phishing.Database/master/phishing-domains-ACTIVE.txt', 'phishing-domains-ACTIVE.txt')).toString('utf8');
-  let trancoCsv: string;
-  const trancoArg = arg('tranco', '');
-  if (trancoArg && !trancoArg.endsWith('.zip')) {
-    trancoCsv = fs.readFileSync(trancoArg, 'utf8');
-  } else {
-    const zipBuf = trancoArg ? fs.readFileSync(trancoArg) : await download('https://tranco-list.eu/top-1m.csv.zip', 'tranco-top-1m.csv.zip');
-    const zip = await JSZip.loadAsync(zipBuf);
-    trancoCsv = await Object.values(zip.files).find(f => f.name.endsWith('.csv'))!.async('string');
+const PDB = 'https://raw.githubusercontent.com/Phishing-Database/Phishing.Database/master';
+
+async function readZipCsv(buf: Buffer): Promise<string> {
+  const zip = await JSZip.loadAsync(buf);
+  return Object.values(zip.files).find(f => f.name.endsWith('.csv'))!.async('string');
+}
+
+/** Lấy hostname từ một dòng (tên miền trần hoặc URL đầy đủ). */
+function hostOf(line: string): string | null {
+  const l = line.trim().toLowerCase();
+  if (!l || l.startsWith('#')) return null;
+  if (/^https?:\/\//.test(l)) {
+    try {
+      return new URL(l).hostname || null;
+    } catch {
+      return null;
+    }
   }
+  return l.split('/')[0] || null;
+}
+
+async function loadData() {
+  // ---------------- Nguồn lừa đảo (nhãn 1): mặc định gộp 3 danh sách của Phishing.Database
+  const phishTexts: string[] = argList('pdb').length
+    ? argList('pdb').map(f => fs.readFileSync(f, 'utf8'))
+    : [
+      (await download(`${PDB}/phishing-domains-ACTIVE.txt`, 'phishing-domains-ACTIVE.txt')).toString('utf8'),
+      (await download(`${PDB}/phishing-links-ACTIVE.txt`, 'phishing-links-ACTIVE.txt')).toString('utf8'),
+      (await download(`${PDB}/phishing-links-INACTIVE.txt`, 'phishing-links-INACTIVE.txt')).toString('utf8'),
+    ];
+
+  // ---------------- Nguồn hợp pháp (nhãn 0): Tranco + Majestic Million + Cisco Umbrella
+  const trancoArg = arg('tranco', '');
+  const trancoCsv = trancoArg && !trancoArg.endsWith('.zip')
+    ? fs.readFileSync(trancoArg, 'utf8')
+    : await readZipCsv(trancoArg ? fs.readFileSync(trancoArg) : await download('https://tranco-list.eu/top-1m.csv.zip', 'tranco-top-1m.csv.zip'));
   const tranco = trancoCsv.split('\n').map(l => l.slice(l.indexOf(',') + 1).trim().toLowerCase()).filter(Boolean);
+  const extraLegit: string[] = [];
+  if (arg('majestic', 'on') !== 'off') {
+    const csv = (await download('https://downloads.majestic.com/majestic_million.csv', 'majestic_million.csv')).toString('utf8');
+    for (const line of csv.split('\n').slice(1)) {
+      const d = line.split(',')[2];
+      if (d) extraLegit.push(d.trim().toLowerCase());
+    }
+  }
+  if (arg('umbrella', 'on') !== 'off') {
+    const csv = await readZipCsv(await download('http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip', 'umbrella-top-1m.csv.zip'));
+    for (const line of csv.split('\n')) {
+      const h = line.slice(line.indexOf(',') + 1).trim().toLowerCase();
+      if (h) extraLegit.push(h);
+    }
+  }
 
   // Tên miền trong mọi tập đánh giá -> loại khỏi dữ liệu huấn luyện
   const excluded = new Set<string>();
@@ -79,8 +118,8 @@ async function loadData() {
       // bỏ qua dòng hỏng
     }
   };
-  for (const f of ['eval-dataset.json', 'eval-holdout.json', 'eval-holdout2.json']) {
-    const p = path.join(import.meta.dirname, f);
+  for (const f of ['eval-dataset.json', 'eval-holdout.json', 'eval-holdout2.json', 'set-b-legit-gambling.json']) {
+    const p = path.join(import.meta.dirname, '..', 'eval', 'datasets', f);
     if (!fs.existsSync(p)) continue;
     const ds = JSON.parse(fs.readFileSync(p, 'utf8'));
     [...(ds.safe || []), ...(ds.dangerous || [])].forEach(addExcluded);
@@ -92,34 +131,41 @@ async function loadData() {
 
   const positives = new Set<string>();
   const pdbIcann = new Set<string>();
-  for (const raw of pdbText.split('\n')) {
-    const host = raw.trim().toLowerCase();
-    if (!host || host.startsWith('#')) continue;
-    const parts = getDomainParts(host);
-    pdbIcann.add(parts.icannDomain);
-    const owner = modelInputDomain(host);
-    // Subdomain bị lạm dụng của nền tảng lớn (docs.google.com...) không phải "tên miền lừa đảo"
-    const rank = topRank.get(parts.icannDomain);
-    if (!parts.isFreeHosting && rank !== undefined && rank <= 10_000) continue;
-    if (excluded.has(owner) || excluded.has(parts.icannDomain)) continue;
-    positives.add(owner);
+  const seenHosts = new Set<string>();
+  for (const text of phishTexts) {
+    for (const raw of text.split('\n')) {
+      const host = hostOf(raw);
+      if (!host || seenHosts.has(host)) continue;
+      seenHosts.add(host);
+      const parts = getDomainParts(host);
+      pdbIcann.add(parts.icannDomain);
+      const owner = modelInputDomain(host);
+      // Subdomain bị lạm dụng của nền tảng lớn (docs.google.com...) không phải "tên miền lừa đảo"
+      const rank = topRank.get(parts.icannDomain);
+      if (!parts.isFreeHosting && rank !== undefined && rank <= 10_000) continue;
+      if (excluded.has(owner) || excluded.has(parts.icannDomain)) continue;
+      positives.add(owner);
+    }
   }
 
-  const negativesAll: string[] = [];
-  for (let i = 0; i < tranco.length; i++) {
-    const d = tranco[i];
-    if (pdbIcann.has(d) || positives.has(d) || excluded.has(d)) continue;
-    if (parseDomain(d).isIp) continue;
-    negativesAll.push(d);
+  const negativeSet = new Set<string>();
+  for (const raw of [...tranco, ...extraLegit]) {
+    if (!raw || parseDomain(raw).isIp) continue;
+    const owner = modelInputDomain(raw);
+    const icann = getDomainParts(raw).icannDomain;
+    if (pdbIcann.has(icann) || positives.has(owner) || excluded.has(owner) || excluded.has(icann)) continue;
+    negativeSet.add(owner);
   }
+  const negativesAll = [...negativeSet];
   // Cân bằng hai lớp
   for (let i = negativesAll.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     [negativesAll[i], negativesAll[j]] = [negativesAll[j], negativesAll[i]];
   }
   const negatives = negativesAll.slice(0, positives.size);
-  console.log(`Dữ liệu: ${positives.size.toLocaleString()} tên miền lừa đảo, ${negatives.length.toLocaleString()} tên miền hợp pháp, loại ${excluded.size} tên miền thuộc tập đánh giá.`);
-  return { positives: [...positives], negatives, excluded };
+  const positiveList = [...positives].slice(0, negatives.length);
+  console.log(`Dữ liệu: ${positiveList.length.toLocaleString()} tên miền lừa đảo (từ ${seenHosts.size.toLocaleString()} host), ${negatives.length.toLocaleString()} tên miền hợp pháp (từ ${negativeSet.size.toLocaleString()} tên miền khả dụng), loại ${excluded.size} tên miền thuộc tập đánh giá.`);
+  return { positives: positiveList, negatives, excluded };
 }
 
 async function main() {
@@ -168,8 +214,8 @@ async function main() {
 
   // Kiểm tra tách biệt trên các tập đánh giá (không có trong dữ liệu huấn luyện)
   const evalReport: Record<string, unknown> = {};
-  for (const f of ['eval-dataset.json', 'eval-holdout.json', 'eval-holdout2.json']) {
-    const p = path.join(import.meta.dirname, f);
+  for (const f of ['eval-dataset.json', 'eval-holdout.json', 'eval-holdout2.json', 'set-b-legit-gambling.json']) {
+    const p = path.join(import.meta.dirname, '..', 'eval', 'datasets', f);
     if (!fs.existsSync(p)) continue;
     const ds = JSON.parse(fs.readFileSync(p, 'utf8'));
     const scoreOf = (u: string) => forward(m, featurize(modelInputDomain(new URL(/^https?:\/\//.test(u) ? u : `https://${u}`).hostname), BUCKETS));

@@ -9,7 +9,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "tsx scripts/test-unified-engine.ts",
+    "eval:a": "tsx scripts/eval-accuracy.ts --dataset eval/datasets/set-a-legit-gambling.json --phishing-file eval/datasets/set-a-phishing-openphish.txt --phishing 120 --seed 3 --concurrency 5 --out eval/results/set-a.json",
+    "eval:b": "tsx scripts/eval-accuracy.ts --dataset eval/datasets/set-b-legit-gambling.json --phishing-file eval/datasets/set-b-phishing.txt --phishing 1000 --concurrency 5 --out eval/results/set-b.json",
+    "eval:metrics": "tsx scripts/eval-metrics.ts eval/results/set-a.json eval/results/set-b.json"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -22,9 +26,11 @@
     "jszip": "^3.10.2",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
+    "playwright-core": "^1.65.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "tldts": "^7.4.19",
+    "undici": "^6.29.1",
     "vite": "^8.3.0"
   },
   "devDependencies": {

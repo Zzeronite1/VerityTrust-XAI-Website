@@ -161,7 +161,7 @@ Các lỗi phát hiện khi đo & sửa: RDAP bị `rdap.org` chặn (→ gọi 
 ## 5. Danh sách file thay đổi
 
 - Sửa: `server.ts`, `index.html`, `package.json`, `package-lock.json` (thêm `compression`, `tldts`, `@types/compression`), `.env.example`, `.gitignore` (+`.cache/`)
-- Mới: `src/landing.css`, `server/{netSafety,domainRules,reputation,evidence,riskScoring,hashedMlp,urlModel,contentModel,jevDecision}.ts`, `server/models/*.bin.gz`, `scripts/{eval-accuracy,train-url-model,train-content-model,content-corpus,eval-content-model}.ts`, `scripts/eval-{dataset,holdout,holdout2}.json`
+- Mới: `src/landing.css`, `server/{netSafety,domainRules,reputation,evidence,riskScoring,hashedMlp,urlModel,contentModel,jevDecision}.ts`, `server/models/*.bin.gz`, `scripts/{eval-accuracy,train-url-model,train-content-model,content-corpus,eval-content-model}.ts`, `scripts/eval-{dataset,holdout,holdout2}.json` (nay chuyển sang `eval/datasets/`)
 
 ## 6. Lệnh hữu ích
 
@@ -220,3 +220,16 @@ Thực hiện toàn bộ yêu cầu ("lm hết đi") nâng cấp toàn diện h�
 - **Origin Remote:** `git@github.com:gianguyen14/VerityTrust-XAI-Website.git` (nhánh `main`).
 - **Upstream Remote:** `https://github.com/Zzeronite1/VerityTrust-XAI-Website.git`.
 - **Tình trạng:** Sẵn sàng kiểm thử, build và triển khai production mà không lo tràn RAM hay lỗi AVX2.
+
+---
+
+## 9. Đợt 9: Đường ống quét nhiều tầng, sửa lỗi an toàn, bộ đánh giá mới (2026-11-07 → 08)
+
+1. **Đường ống 6 tầng có dừng sớm** (`server/scanPipeline.ts`): Tầng 0 DNS/SSRF → Tầng 1 danh tiếng (không tải HTML) → Tầng 2 bằng chứng + 2 mô hình → Tầng 3 Chrome headless (`server/headless.ts`, chỉ cho trang rỗng/SPA ở vùng xám 45–74) → Tầng 4 Jev/OpenJev (vùng xám) → Tầng 5 `POST /api/explain` (AI chỉ diễn giải, không đổi điểm). Kết quả có trường `pipeline`. p50 727ms → 176ms trên tập A.
+2. **Sửa lỗi an toàn:** bỏ `NODE_TLS_REJECT_UNAUTHORIZED=0` toàn cục (đã tắt kiểm tra chứng chỉ cho cả lời gọi API AI) — giờ chỉ request tải trang đích dùng agent undici chấp nhận chứng chỉ lỗi. Rate limit đã áp cho `/api/explain`.
+3. **Sửa lỗi chính xác:** favicon trên CDN chung (googleusercontent…) không còn bị coi là giả mạo; cắt thẻ `<script>` chưa đóng khi HTML bị cắt ở 1MB; RDAP không còn hỏng trên mạng chậm (`setDefaultAutoSelectFamilyAttemptTimeout(1000)`); luật giả danh thương hiệu bỏ qua nút "Đăng nhập với Google/Facebook", link kho ứng dụng, reCAPTCHA, icon mạng xã hội, chữ của liên kết là đường dẫn, cụm đại lý chính hãng.
+4. **Thử thêm dữ liệu huấn luyện, không giữ:** mô hình tên miền v2 (1,1 triệu mẫu) kém hơn v1 trên toàn hệ thống; mô hình nội dung + 4.010 trang hợp pháp thật làm sụp khả năng bắt cờ bạc. Chi tiết: `docs/MO-HINH-AI.md`.
+5. **Bộ đánh giá mới (tập B, 695 web, gán nhãn thủ công)** + gom toàn bộ dữ liệu đo vào `eval/`, thêm `scripts/eval-metrics.ts` và lệnh `npm run eval:a|eval:b|eval:metrics`. Kết quả gộp 1.053 web: Accuracy 95,82%, Precision 97,09%, Recall 94,53%, F1 95,79%, AUC 98,89%, FPR 2,87%. Chi tiết: `docs/DANH-GIA.md`.
+6. **Tài liệu:** viết lại `README.md`, thêm `docs/` (KIEN-TRUC, CHAM-DIEM, MO-HINH-AI, DANH-GIA, API) và `eval/README.md`.
+
+Điểm yếu còn lại: lừa đảo bán hàng/đầu tư không có form đăng nhập, cờ bạc bằng ngôn ngữ ít gặp, web hợp pháp có tên thương hiệu trong tên miền.

@@ -1,5 +1,15 @@
 import dns from 'node:dns/promises';
 import net from 'node:net';
+import { Agent, fetch as undiciFetch } from 'undici';
+
+// Node >= 20 thử lần lượt các IP của một host (Happy Eyeballs) với mặc định chỉ 250ms mỗi IP. Trên mạng trễ cao,
+// kết nối tới máy chủ ở xa (vd RDAP của Verisign) có thể thất bại toàn bộ dù curl vẫn chạy -> nới lên 1 giây.
+net.setDefaultAutoSelectFamilyAttemptTimeout(1000);
+
+// Kết nối RIÊNG cho việc tải trang đích: chấp nhận chứng chỉ lỗi/tự ký để vẫn đọc được nội dung trang lừa đảo
+// (tính hợp lệ của TLS được đo riêng bằng probeTls và trừ điểm). Mọi kết nối khác của server - gọi API AI,
+// RDAP, tải danh sách đen - vẫn dùng fetch mặc định với kiểm tra chứng chỉ đầy đủ.
+const TARGET_PAGE_AGENT = new Agent({ connect: { rejectUnauthorized: false } });
 
 // ============================================================================
 // CHỐNG SSRF: Không cho phép máy chủ Verity truy cập địa chỉ nội bộ / loopback /
@@ -104,12 +114,13 @@ export async function safeFetch(urlStr: string, options: {
 
       let response: Response;
       try {
-        response = await fetch(parsed.href, {
+        response = await undiciFetch(parsed.href, {
           method: 'GET',
           redirect: 'manual',
           signal: controller.signal,
           headers: options.headers,
-        });
+          dispatcher: TARGET_PAGE_AGENT,
+        }) as unknown as Response;
       } catch (err: any) {
         if (redirects.length > 0) {
           throw new FetchRedirectError(err?.message || String(err), redirects, currentUrl);

@@ -21,7 +21,7 @@ const CACHE_FILE = path.resolve('.cache/eval-pages.json');
 type Split = 'tune' | 'test';
 const samples: Array<{ url: string; label: 0 | 1; group: string; split: Split }> = [];
 for (const [f, split] of [['eval-dataset.json', 'tune'], ['eval-holdout.json', 'test'], ['eval-holdout2.json', 'test']] as const) {
-  const p = path.join(import.meta.dirname, f);
+  const p = path.join(import.meta.dirname, '..', 'eval', 'datasets', f);
   if (!fs.existsSync(p)) continue;
   const ds = JSON.parse(fs.readFileSync(p, 'utf8'));
   for (const u of ds.safe || []) samples.push({ url: u, label: 0, group: 'legit', split });

@@ -269,7 +269,12 @@ export function scoreEvidence(e: SiteEvidence): RiskAssessment {
     const impersonated = html.brandMentions
       .filter(b => !d.host.includes(b) && !(e.finalDomain?.host || '').includes(b))
       .filter(b => brandSource === null || brandSource.includes(b));
-    if (impersonated.length && isAnonymousHost && (html.hasPasswordField || html.sensitiveFields.length || html.credentialPrompt)) {
+    // Thương hiệu ở tiêu đề/mô tả + lời mời đăng nhập/xác minh là đủ; nếu thương hiệu chỉ xuất hiện trong thân trang
+    // (trang SaaS/báo chí nhắc tới đối tác kèm nút "Đăng nhập") thì phải có ô mật khẩu hoặc ô thông tin nhạy cảm thật
+    const headline = `${html.title} ${html.description}`.toLowerCase();
+    const brandInHeadline = impersonated.some(b => headline.includes(b));
+    const credentialFields = html.hasPasswordField || html.sensitiveFields.length > 0;
+    if (impersonated.length && isAnonymousHost && (credentialFields || (brandInHeadline && html.credentialPrompt))) {
       add('brand_impersonation', -35, `Giả danh thương hiệu ${impersonated.slice(0, 3).join(', ')}`, 'Trang nhắc tới thương hiệu lớn và yêu cầu đăng nhập/xác minh, nhưng không chạy trên tên miền chính thức của thương hiệu đó.');
       if (html.hasPasswordField || html.sensitiveFields.length) capAt(15, 'phishing');
     }

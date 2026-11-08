@@ -93,6 +93,22 @@ if (scoreFavicon.score > 20 || scoreFavicon.status !== 'Dangerous') {
   process.exit(1);
 }
 
+console.log('\n=== TEST 2b: Favicon trên CDN dùng chung không bị coi là giả mạo (hồi quy phongvu.vn) ===');
+for (const [label, href, page, expected] of [
+  ['CDN Google (phongvu.vn)', 'https://lh3.googleusercontent.com/A0exvuDoHpF2iQO2yxX7XfS6d4Zfie=w32', 'https://phongvu.vn/', null],
+  ['CDN GitHub', 'https://raw.githubusercontent.com/acme/site/main/favicon.png', 'https://acme-shop.vn/', null],
+  ['CDN Cloudflare', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/icon.png', 'https://shopnho.vn/', null],
+  ['Tên thương hiệu trong đường dẫn', 'https://cdn.example.net/img/vietcombank-logo.ico', 'https://vcb-verify.top/', 'vietcombank'],
+  ['Hotlink từ site chính thức', 'https://www.techcombank.com.vn/favicon.ico', 'https://tcb-login.xyz/', 'techcombank'],
+] as const) {
+  const got = analyzeHtml(`<html><head><title>Trang</title><link rel="icon" href="${href}"></head><body>Xin chào</body></html>`, page, new URL(page).hostname.replace(/^www\./, '')).faviconBrand;
+  console.log(`${label}: faviconBrand=${got}`);
+  if (got !== expected) {
+    console.error(`FAIL: ${label} - mong đợi ${expected}, nhận ${got}`);
+    process.exit(1);
+  }
+}
+
 console.log('\n=== TEST 3: SPA with Telegram Exfiltration ===');
 const spaTelegramHtml = `
 <!DOCTYPE html>

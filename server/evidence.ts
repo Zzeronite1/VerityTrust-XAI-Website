@@ -2,9 +2,6 @@ import net from 'node:net';
 import tls from 'node:tls';
 import { BlockedTargetError, FetchRedirectError, resolvePublicAddress, safeFetch } from './netSafety.ts';
 
-// Bật cờ cho phép quét nội dung các trang có chứng chỉ tự ký hoặc lỗi TLS
-// (Độ hợp lệ của TLS vẫn được kiểm tra độc lập và trừ điểm tại probeTls)
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 import { TARGETED_BRAND_NAMES, getDomainParts, isTrustedHost, type DomainParts } from './domainRules.ts';
 import { predictPhishingProbability } from './urlModel.ts';
 import {
@@ -191,6 +188,9 @@ export function htmlToMarkdown(html: string): string {
     .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, ' ')
     .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, ' ')
     .replace(/<template\b[^>]*>[\s\S]*?<\/template>/gi, ' ')
+    // HTML bị cắt ở giới hạn 1MB có thể dừng giữa thẻ <script>/<style> chưa đóng: bỏ phần còn lại,
+    // nếu không cả trăm nghìn ký tự mã JavaScript sẽ bị coi là nội dung trang
+    .replace(/<(script|style|noscript|svg|template)\b[^>]*>(?![\s\S]*<\/\1>)[\s\S]*$/i, ' ')
     // Loại bỏ banner Cookie, GDPR, OnTrust, Modal che phủ gây nhiễu ngữ nghĩa
     .replace(/<(?:div|section|aside|dialog)[^>]*(?:id|class)\s*=\s*["'][^"']*(?:cookie|gdpr|consent|onetrust|privacy-modal|cc-banner|cc-window)[^"']*["'][^>]*>[\s\S]*?<\/(?:div|section|aside|dialog)>/gi, ' ');
 
@@ -268,6 +268,14 @@ function ownerDomainOf(href: string, base: string): string | null {
   }
 }
 
+// CDN / kho ảnh dùng chung: ai cũng có thể lưu favicon ở đây, nên tên máy chủ không cho biết ai sở hữu biểu tượng
+const SHARED_ASSET_HOSTS = [
+  'googleusercontent.com', 'gstatic.com', 'googleapis.com', 'ggpht.com', 'blogger.com', 'blogspot.com',
+  'githubusercontent.com', 'github.io', 'cloudflare.com', 'cloudfront.net', 'akamaihd.net', 'akamaized.net',
+  'fbcdn.net', 'wp.com', 'wordpress.com', 'shopify.com', 'squarespace-cdn.com', 'wixstatic.com', 'jsdelivr.net',
+  'unpkg.com', 'imgur.com', 'amazonaws.com', 'azureedge.net', 'twimg.com', 'ytimg.com', 'licdn.com',
+];
+
 const SENSITIVE_FIELD_PATTERNS: Array<[string, RegExp]> = [
   ['OTP', /\b(?:otp|one[-_ ]?time|mã\s*otp|ma[-_]?otp|verification[-_ ]?code|sms[-_ ]?code)\b/i],
   ['Thẻ thanh toán', /\b(?:card[-_ ]?num|cc[-_ ]?num|cardnumber|cc-number|cvv|cvc|csc|expiry|exp[-_ ]?date|số\s*thẻ)\b/i],
@@ -320,7 +328,20 @@ export function analyzeHtml(html: string, pageUrl: string, ownerDomain: string):
   ].filter(re => re.test(scripts)).length;
 
   const lowerText = `${title} ${description} ${text.slice(0, 6000)}`.toLowerCase();
-  const brandMentions = TARGETED_BRAND_NAMES.filter(b => b.length >= 5 && new RegExp(`\\b${b}\\b`, 'i').test(lowerText));
+  // Bỏ các cụm thương hiệu xuất hiện tự nhiên trên web hợp pháp: nút đăng nhập mạng xã hội, link kho ứng dụng, mục "theo dõi chúng tôi"
+  const brandText = lowerText
+    .replace(/\((?:https?:\/\/)?[a-z0-9.-]+\.[a-z]{2,}[^\s)]*\)/g, ' ') // đích của liên kết (vd "(www.facebook.com/trang-cua-truong)")
+    .replace(/protected by recaptcha and the google[^.]{0,120}/g, ' ')
+    .replace(/\[[a-z0-9.-]+\.[a-z]{2,}\/[^\]]*\]/g, ' ') // chữ của liên kết là một đường dẫn
+    // biểu tượng mạng xã hội: [fa-facebook-f], [![facebook]], [google+], [Facebook] đứng một mình trong liên kết
+    .replace(/\[!?\[?\s*(?:fa-|icon-)?[a-z]+(?:-[a-z]+)?\+?\s*\]?\]/g, m => (/[a-z]{3,}/.test(m) && m.length <= 26 ? ' ' : m))
+    // đại lý/cửa hàng bán sản phẩm của thương hiệu
+    .replace(/(?:apple|google|samsung) (?:pixel|watch|tv|pencil|airpods|homepod|nest|chromecast|galaxy)/g, ' ')
+    .replace(/(?:revendeur agréé|partenaire agréé|authori[sz]ed (?:reseller|dealer|partner)|đại lý (?:ủy quyền|chính hãng)|nhà phân phối chính hãng)[^.]{0,40}/g, ' ')
+    .replace(/(?:đăng nhập|đăng ký|tiếp tục|login|log in|sign in|sign up|continue|connect)\s*(?:bằng|với|qua|with|using|via)\s*(?:tài khoản\s*)?(?:google|facebook|apple|microsoft|zalo|github|twitter|linkedin)/g, ' ')
+    .replace(/(?:google play|app store|apple store|get it on google|download on the app store|tải (?:ứng dụng|app) (?:trên|tại))/g, ' ')
+    .replace(/(?:theo dõi|follow|kết nối với) (?:chúng tôi|us)(?: trên| on)?[^.]{0,80}/g, ' ');
+  const brandMentions = TARGETED_BRAND_NAMES.filter(b => b.length >= 5 && new RegExp(`\\b${b}\\b`, 'i').test(brandText));
 
   // Nhận diện Single Page Application (SPA như React, Vue, Next.js với HTML rỗng)
   const hasSpaContainer = /<div\b[^>]*(?:id|class)\s*=\s*["'](?:root|app|__next|__nuxt)["']/i.test(html);
@@ -353,16 +374,27 @@ export function analyzeHtml(html: string, pageUrl: string, ownerDomain: string):
     try {
       const favU = new URL(rawFavicon, pageUrl);
       faviconUrl = favU.href;
+      const favHost = favU.hostname.toLowerCase();
       const favDomain = ownerDomainOf(favU.href, pageUrl);
-      const favLower = favU.href.toLowerCase();
-      for (const b of TARGETED_BRAND_NAMES) {
-        if (b.length >= 4 && favLower.includes(b) && !ownerDomain.includes(b)) {
-          faviconBrand = b;
-          break;
-        }
+      const onSharedHost = SHARED_ASSET_HOSTS.some(d => favHost === d || favHost.endsWith(`.${d}`));
+      // 1) Tên thương hiệu trong ĐƯỜNG DẪN/TÊN FILE favicon (vd /img/vietcombank-logo.ico), khớp theo ranh giới từ.
+      //    Không xét tên máy chủ: lh3.googleusercontent.com chứa "google" nhưng chỉ là CDN chứa ảnh của bất kỳ ai.
+      let favPath = favU.pathname;
+      try {
+        favPath = decodeURIComponent(favPath);
+      } catch {
+        // giữ nguyên đường dẫn nếu không giải mã được
       }
-      if (!faviconBrand && favDomain && favDomain !== ownerDomain && isTrustedHost(favDomain)) {
-        faviconBrand = favDomain;
+      const pathTokens = favPath.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+      faviconBrand = TARGETED_BRAND_NAMES.find(b =>
+        b.length >= 4 &&
+        !ownerDomain.includes(b) &&
+        pathTokens.some(t => t === b || (b.length >= 6 && t.startsWith(b))),
+      ) ?? null;
+      // 2) Favicon lấy thẳng từ website chính thức của thương hiệu khác (hotlink vd vietcombank.com.vn/favicon.ico).
+      //    CDN/kho ảnh dùng chung không được tính dù nằm trong danh sách tin cậy.
+      if (!faviconBrand && favDomain && favDomain !== ownerDomain && !onSharedHost && isTrustedHost(favHost)) {
+        faviconBrand = TARGETED_BRAND_NAMES.find(b => favDomain.includes(b)) ?? favDomain;
       }
     } catch {
       faviconUrl = rawFavicon;
@@ -400,11 +432,14 @@ export function analyzeHtml(html: string, pageUrl: string, ownerDomain: string):
   };
 }
 
-export async function collectEvidence(targetUrl: string): Promise<SiteEvidence> {
-  const started = Date.now();
+/**
+ * Tầng 1 (trong bộ nhớ, < 1ms): khởi tạo bằng chứng với các tín hiệu không cần mạng -
+ * độ phổ biến Tranco, danh sách đen phishing, mô hình học sâu trên tên miền.
+ */
+export function createEvidence(targetUrl: string): SiteEvidence {
   const parsed = new URL(targetUrl);
   const domain = getDomainParts(parsed.hostname);
-  const evidence: SiteEvidence = {
+  return {
     url: targetUrl,
     finalUrl: null,
     domain,
@@ -421,9 +456,21 @@ export async function collectEvidence(targetUrl: string): Promise<SiteEvidence> 
     threatListings: checkThreatFeeds(domain.host, domain.ownerDomain, targetUrl),
     collectedMs: 0,
   };
+}
 
+/**
+ * Tầng 0: phân giải DNS qua bộ chặn SSRF. Trả về false nếu không thể truy cập tiếp
+ * (tên miền không tồn tại / trỏ về IP nội bộ) - khi đó vẫn bổ sung tuổi tên miền và Safe Browsing.
+ * Ném BlockedTargetError nếu người dùng nhập trực tiếp IP nội bộ / localhost.
+ */
+export async function resolveTargetDns(evidence: SiteEvidence): Promise<boolean> {
+  const started = Date.now();
+  const parsed = new URL(evidence.url);
+  const domain = evidence.domain;
+  const targetUrl = evidence.url;
   try {
     evidence.dns.ip = await resolvePublicAddress(parsed.hostname, 2500);
+    return true;
   } catch (err: any) {
     // Người dùng nhập trực tiếp IP nội bộ / localhost -> từ chối như cũ
     if (err instanceof BlockedTargetError && (domain.isIp || /^localhost$|\.localhost$/i.test(parsed.hostname))) throw err;
@@ -439,10 +486,18 @@ export async function collectEvidence(targetUrl: string): Promise<SiteEvidence> 
     ]);
     evidence.domainAge = domainAge;
     evidence.threatListings.push(...safeBrowsing);
-    evidence.collectedMs = Date.now() - started;
-    return evidence;
+    evidence.collectedMs += Date.now() - started;
+    return false;
   }
+}
 
+/** Tầng 2: tải HTML tĩnh + bắt tay TLS + tuổi tên miền RDAP + Safe Browsing (song song). */
+export async function collectPageEvidence(evidence: SiteEvidence): Promise<void> {
+  const started = Date.now();
+  const parsed = new URL(evidence.url);
+  const domain = evidence.domain;
+  const targetUrl = evidence.url;
+  if (!evidence.dns.ip) return;
   const port = parsed.port ? parseInt(parsed.port, 10) : 443;
   const fetchPage = async () => {
     try {
@@ -507,6 +562,12 @@ export async function collectEvidence(targetUrl: string): Promise<SiteEvidence> 
   }
 
   evidence.threatListings = [...new Set(evidence.threatListings)];
-  evidence.collectedMs = Date.now() - started;
+  evidence.collectedMs += Date.now() - started;
+}
+
+/** Thu thập toàn bộ bằng chứng một lượt (Tầng 0 -> 2, không dừng sớm). Dùng cho script đánh giá/huấn luyện. */
+export async function collectEvidence(targetUrl: string): Promise<SiteEvidence> {
+  const evidence = createEvidence(targetUrl);
+  if (await resolveTargetDns(evidence)) await collectPageEvidence(evidence);
   return evidence;
 }

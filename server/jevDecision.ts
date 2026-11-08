@@ -11,6 +11,10 @@ import type { RiskAssessment } from './riskScoring.ts';
 
 export type JevMode = 'off' | 'api' | 'openjev';
 
+/** Vùng xám: điểm bằng chứng chưa dứt khoát, cần trọng tài phân xử (Tầng 4) */
+export const GRAY_ZONE_MIN = 45;
+export const GRAY_ZONE_MAX = 74;
+
 export interface JevDecisionResult {
   engine: 'jev-api' | 'openjev';
   latencyMs: number;
@@ -43,7 +47,7 @@ export function getJevConfig(): JevConfig {
     apiKey: process.env.JEV_API_KEY || '',
     openJevEndpoint: process.env.OPENJEV_ENDPOINT || 'http://localhost:8080/v1/decide',
     openJevApiKey: process.env.OPENJEV_API_KEY || '',
-    grayZoneOnly: process.env.JEV_GRAY_ZONE_ONLY !== 'false', // Mặc định chỉ gọi cho ca vùng xám 40-75 điểm
+    grayZoneOnly: process.env.JEV_GRAY_ZONE_ONLY !== 'false', // Mặc định chỉ gọi cho ca vùng xám 45-74 điểm
     timeoutMs: parseInt(process.env.JEV_TIMEOUT_MS || '3000', 10),
   };
 }
@@ -107,8 +111,8 @@ export async function queryJevDecision(e: SiteEvidence, a: RiskAssessment): Prom
   const cfg = getJevConfig();
   if (cfg.mode === 'off') return null;
 
-  // Nếu chỉ bật cho vùng xám (40 - 74 điểm) và bằng chứng đã dứt khoát rõ ràng -> Bỏ qua
-  if (cfg.grayZoneOnly && (a.score < 40 || a.score >= 75)) {
+  // Nếu chỉ bật cho vùng xám (45 - 74 điểm) và bằng chứng đã dứt khoát rõ ràng -> Bỏ qua
+  if (cfg.grayZoneOnly && (a.score < GRAY_ZONE_MIN || a.score > GRAY_ZONE_MAX)) {
     return null;
   }
 

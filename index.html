@@ -507,6 +507,27 @@
               <div id="score-factors-list" class="space-y-1.5"></div>
             </div>
 
+            <!-- Hành trình qua các tầng quét (dừng sớm ở tầng nào, mỗi tầng mất bao lâu) -->
+            <div id="pipeline-section" class="hidden space-y-3 pt-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                <span>Các Tầng Quét</span>
+              </h3>
+              <p id="pipeline-meta" class="text-[11px] text-slate-400 font-mono"></p>
+              <div id="pipeline-list" class="space-y-1.5"></div>
+            </div>
+
+            <!-- Tầng 5: giải thích bằng ngôn ngữ tự nhiên, chỉ chạy khi người dùng yêu cầu -->
+            <div class="space-y-3 pt-2">
+              <button id="explain-btn" type="button" onclick="requestExplanation()" class="px-5 py-2.5 rounded-xl bg-[#0b1329] hover:bg-[#0f1c40] border border-sky-500/40 hover:border-sky-400 text-sky-300 hover:text-white text-xs font-bold smooth-interactive cursor-pointer">
+                Xem giải thích chi tiết (AI)
+              </button>
+              <div id="explain-box" class="hidden p-4 rounded-2xl bg-[#070e21] border border-slate-800 text-xs text-slate-300 leading-relaxed space-y-2">
+                <div id="explain-engine" class="text-[11px] text-slate-500 font-mono"></div>
+                <div id="explain-text" class="space-y-2"></div>
+              </div>
+            </div>
+
             <!-- Khối Khẳng định AI Disclaimer (Khẳng định AI đôi khi có sai sót) -->
             <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-200/90 text-xs flex items-start gap-3 leading-relaxed shadow-xs">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-400 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1150,6 +1171,7 @@
           const parts = [`Điểm bằng chứng: ${breakdown.evidence_score}/100`];
           if (typeof breakdown.ai_score === 'number') parts.push(`Điểm AI: ${breakdown.ai_score}/100`);
           parts.push(`Độ đầy đủ bằng chứng: ${breakdown.evidence_completeness}%`);
+          if (breakdown.jev_decision) parts.push(`Trọng tài: ${breakdown.jev_decision.engine}`);
           document.getElementById('score-factors-meta').textContent = parts.join(' · ');
           document.getElementById('score-factors-list').innerHTML = breakdown.factors.map(f => {
             const positive = f.delta > 0;
@@ -1172,11 +1194,71 @@
           factorsSection.classList.add('hidden');
         }
 
+        // 8. Hành trình qua các tầng quét
+        const pipelineSection = document.getElementById('pipeline-section');
+        const pipeline = data.pipeline;
+        if (pipeline && Array.isArray(pipeline.tiers)) {
+          pipelineSection.classList.remove('hidden');
+          document.getElementById('pipeline-meta').textContent =
+            `Kết luận ở Tầng ${pipeline.exit_tier}: ${pipeline.exit_reason} · tổng ${pipeline.total_ms}ms`;
+          document.getElementById('pipeline-list').innerHTML = pipeline.tiers.map(t => {
+            const tone = t.status === 'exit'
+              ? 'bg-sky-500/10 border-sky-500/40 text-sky-300'
+              : t.status === 'passed'
+              ? 'bg-slate-800/60 border-slate-700 text-slate-300'
+              : 'bg-transparent border-slate-800 text-slate-500';
+            const label = t.status === 'exit' ? 'DỪNG' : t.status === 'passed' ? 'ĐÃ CHẠY' : 'BỎ QUA';
+            return `
+              <div class="flex items-start gap-3 p-2.5 rounded-xl border ${tone} text-xs">
+                <span class="font-mono font-bold w-16 shrink-0">Tầng ${escapeHtml(t.tier)}</span>
+                <div class="flex-1">
+                  <div class="font-semibold">${escapeHtml(t.name)} <span class="text-[10px] font-mono opacity-70">· ${label}${t.status !== 'skipped' ? ` · ${escapeHtml(t.ms)}ms` : ''}</span></div>
+                  <div class="text-[11px] text-slate-400 leading-snug">${escapeHtml(t.note)}</div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          pipelineSection.classList.add('hidden');
+        }
+        lastAnalyzedUrl = data.analyzed_url || '';
+        document.getElementById('explain-box').classList.add('hidden');
+        document.getElementById('explain-btn').disabled = false;
+
         // Show result section & scroll smooth
         document.getElementById('result-section').classList.remove('hidden');
         setTimeout(() => {
           document.getElementById('result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
+      }
+
+      // ── Tầng 5: giải thích chi tiết theo yêu cầu ─────────────────────────────
+      let lastAnalyzedUrl = '';
+      async function requestExplanation() {
+        if (!lastAnalyzedUrl) return;
+        const btn = document.getElementById('explain-btn');
+        const box = document.getElementById('explain-box');
+        btn.disabled = true;
+        btn.textContent = 'Đang soạn giải thích...';
+        try {
+          const res = await fetch('/api/explain', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: lastAnalyzedUrl }),
+            signal: AbortSignal.timeout(45000),
+          });
+          const data = await res.json().catch(() => ({}));
+          document.getElementById('explain-engine').textContent = data.engine ? '⚡ ' + data.engine : '';
+          const text = res.ok ? (data.explanation || '') : (data.message || 'Không tạo được giải thích.');
+          document.getElementById('explain-text').innerHTML = text.split(/\n{2,}/).map(p => `<p>${escapeHtml(p)}</p>`).join('');
+          box.classList.remove('hidden');
+        } catch (err) {
+          document.getElementById('explain-text').innerHTML = '<p>Không kết nối được máy chủ để tạo giải thích.</p>';
+          box.classList.remove('hidden');
+        } finally {
+          btn.textContent = 'Xem giải thích chi tiết (AI)';
+          btn.disabled = false;
+        }
       }
 
       function escapeHtml(text) {

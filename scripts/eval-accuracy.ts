@@ -2,9 +2,9 @@
  * Đo độ chính xác của /api/analyze trên bộ dữ liệu có nhãn.
  *
  *   npx tsx scripts/eval-accuracy.ts [--base http://localhost:3000] [--phishing 60] [--out report.json]
- *     [--dataset scripts/eval-holdout.json] [--phishing-file feed.txt] [--exclude-file used-urls.txt] [--seed 42]
+ *     [--dataset eval/datasets/set-b-legit-gambling.json] [--phishing-file feed.txt] [--exclude-file used-urls.txt] [--seed 42]
  *
- * - Website hợp pháp + cờ bạc: scripts/eval-dataset.json
+ * - Website hợp pháp + cờ bạc: eval/datasets/eval-dataset.json (mặc định)
  * - Phishing: lấy ngẫu nhiên N URL đang hoạt động từ feed công khai của OpenPhish tại thời điểm chạy
  *   (luôn là dữ liệu mới, hệ thống chưa từng "thấy"). Lưu ý: server sẽ tải HTML của các trang lừa đảo này.
  * - Nên chạy server với RATE_LIMIT_PER_MIN=0, và THREAT_FEEDS=off để đo khả năng tự phát hiện
@@ -41,7 +41,7 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
 }
 
 async function loadSamples(): Promise<Sample[]> {
-  const ds = JSON.parse(fs.readFileSync(arg('dataset', path.join(import.meta.dirname, 'eval-dataset.json')), 'utf8'));
+  const ds = JSON.parse(fs.readFileSync(arg('dataset', path.join(import.meta.dirname, '..', 'eval', 'datasets', 'eval-dataset.json')), 'utf8'));
   const samples: Sample[] = [
     ...ds.safe.map((url: string) => ({ url, label: 'safe' as const, group: 'legit' })),
     ...ds.dangerous.map((url: string) => ({ url, label: 'dangerous' as const, group: 'gambling' })),

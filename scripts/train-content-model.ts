@@ -2,7 +2,11 @@
  * Huấn luyện mô hình học sâu đọc nội dung trang (server/contentModel.ts) trên kho dữ liệu chưng cất từ tri thức
  * (scripts/content-corpus.ts). Đánh giá thật sự trên trang web thật bằng scripts/eval-content-model.ts.
  *
- *   npx tsx scripts/train-content-model.ts [--samples 80000] [--epochs 3] [--buckets 65536] [--dim 32] [--hidden 32]
+ *   npx tsx scripts/train-content-model.ts [--samples 80000] [--epochs 3] [--buckets 65536] [--dim 48] [--hidden 48]
+ *     [--real .cache/training/real-pages.jsonl] [--real-weight 3]
+ *
+ * --real: trộn thêm trang THẬT do scripts/collect-pages.ts thu thập. Tách 80/20 theo tên miền chủ sở hữu
+ * (cùng một tên miền không bao giờ nằm ở cả train lẫn test); 20% còn lại là tập kiểm tra trên dữ liệu thật.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -25,6 +29,8 @@ const HIDDEN = parseInt(arg('hidden', '48'), 10);
 const LR = parseFloat(arg('lr', '0.2'));
 const STRUCT_SWAP = parseFloat(arg('struct-swap', '0.25'));
 const WEIGHT_DECAY = parseFloat(arg('weight-decay', '5e-5'));
+const REAL = arg('real', '');
+const REAL_WEIGHT = parseInt(arg('real-weight', '3'), 10);
 const OUT = arg('out', path.join(import.meta.dirname, '../server/models/phishing-content-model.bin.gz'));
 
 let seed = 99991;
@@ -51,6 +57,31 @@ const valSet: CompactItem[] = generateCorpus(Math.round(SAMPLES / 8), 777).map(s
   theme: s.theme,
   f: featurizeContent(s, BUCKETS),
 }));
+
+// ---------------------------------------------------------------- trang thật (tuỳ chọn)
+const realTest: CompactItem[] = [];
+let realTrainCount = 0;
+if (REAL) {
+  const ownerBucket = (owner: string) => {
+    let h = 0;
+    for (let i = 0; i < owner.length; i++) h = (h * 31 + owner.charCodeAt(i)) >>> 0;
+    return h % 5;
+  };
+  for (const line of fs.readFileSync(REAL, 'utf8').split('\n')) {
+    if (!line) continue;
+    const r = JSON.parse(line);
+    if (!r.html) continue;
+    const item: CompactItem = { label: r.label, theme: r.label ? 'real_phishing' : 'real_legit', f: featurizeContent(r.html, BUCKETS) };
+    if (ownerBucket(r.owner) === 0) {
+      realTest.push(item);
+    } else {
+      // Lặp lại trang thật REAL_WEIGHT lần để chúng có tiếng nói tương xứng bên cạnh dữ liệu tổng hợp
+      for (let k = 0; k < REAL_WEIGHT; k++) trainSet.push(item);
+      realTrainCount++;
+    }
+  }
+  console.log(`Trang thật: ${realTrainCount.toLocaleString()} trang huấn luyện (x${REAL_WEIGHT}), ${realTest.length.toLocaleString()} trang kiểm tra (tên miền chưa từng thấy).`);
+}
 console.log(`Kho dữ liệu: ${trainSet.length.toLocaleString()} mẫu huấn luyện, ${valSet.length.toLocaleString()} mẫu validation.`);
 console.log(`Bộ nhớ RAM: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB (cực nhẹ, an toàn tuyệt đối cho máy tính).`);
 console.log(`Kịch bản lừa đảo (${CORPUS_THEMES.phishing.length}): ${CORPUS_THEMES.phishing.join(', ')}`);
@@ -94,7 +125,8 @@ for (let epoch = 1; epoch <= EPOCHS; epoch++) {
   }
   const scores = valSet.map(v => forward(m, v.f));
   const labels = valSet.map(v => v.label);
-  console.log(`Epoch ${epoch}/${EPOCHS}: loss ${(loss / trainSet.length).toFixed(4)}, val AUC ${auc(scores, labels).toFixed(4)}, val acc ${metricsAt(scores, labels, 0.5).accuracy} (${((Date.now() - t0) / 1000).toFixed(1)}s, RAM: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB)`);
+  const realAuc = realTest.length ? `, AUC trang thật ${auc(realTest.map(v => forward(m, v.f)), realTest.map(v => v.label)).toFixed(4)}` : '';
+  console.log(`Epoch ${epoch}/${EPOCHS}: loss ${(loss / trainSet.length).toFixed(4)}, val AUC ${auc(scores, labels).toFixed(4)}, val acc ${metricsAt(scores, labels, 0.5).accuracy}${realAuc} (${((Date.now() - t0) / 1000).toFixed(1)}s, RAM: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB)`);
 }
 
 const scores = valSet.map(v => forward(m, v.f));
@@ -106,14 +138,27 @@ for (const theme of [...CORPUS_THEMES.phishing, ...CORPUS_THEMES.legit, 'news_ab
   const correct = idx.filter(i => (scores[i] >= 0.5 ? 1 : 0) === labels[i]).length;
   byTheme[theme] = `${correct}/${idx.length}`;
 }
-const validation = { samples: valSet.length, auc: +auc(scores, labels).toFixed(4), at: [0.5, 0.75, 0.9].map(t => metricsAt(scores, labels, t)), byTheme };
-console.log('Validation (dữ liệu tổng hợp):', JSON.stringify(validation, null, 1));
+const realScores = realTest.map(v => forward(m, v.f));
+const realLabels = realTest.map(v => v.label);
+const realValidation = realTest.length ? {
+  samples: realTest.length,
+  phishing: realLabels.filter(l => l === 1).length,
+  legit: realLabels.filter(l => l === 0).length,
+  auc: +auc(realScores, realLabels).toFixed(4),
+  at: [0.5, 0.75, 0.9].map(t => metricsAt(realScores, realLabels, t)),
+} : null;
+const validation = { samples: valSet.length, auc: +auc(scores, labels).toFixed(4), at: [0.5, 0.75, 0.9].map(t => metricsAt(scores, labels, t)), byTheme, real: realValidation };
+console.log('Validation (dữ liệu tổng hợp):', JSON.stringify({ ...validation, real: undefined }));
+if (realValidation) console.log('Kiểm tra trên TRANG THẬT (tên miền chưa từng thấy):', JSON.stringify(realValidation, null, 1));
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 const buf = serializeModel(m, {
   trainedAt: new Date().toISOString().slice(0, 10),
-  source: 'Kho dữ liệu chưng cất từ tri thức về các chiến dịch lừa đảo (scripts/content-corpus.ts)',
+  source: REAL
+    ? `Dữ liệu tổng hợp (scripts/content-corpus.ts) + ${realTrainCount} trang thật (scripts/collect-pages.ts)`
+    : 'Kho dữ liệu chưng cất từ tri thức về các chiến dịch lừa đảo (scripts/content-corpus.ts)',
   trainSamples: trainSet.length,
+  realTrainPages: realTrainCount,
   epochs: EPOCHS,
   validation,
 });
