@@ -12,6 +12,8 @@ Thư mục này chứa **toàn bộ dữ liệu kiểm thử** dùng để đo �
 | `set-a-phishing-openphish.txt` | **Tập A**: ảnh chụp feed OpenPhish ngày 07/11/2026; công cụ đo chọn ngẫu nhiên 120 URL (seed 3) | 300 |
 | `set-b-legit-gambling.json` | **Tập B**: web hợp pháp ít phổ biến (`safe`) + web cờ bạc (`dangerous`), gán nhãn thủ công ngày 08/11/2026 | 318 + 192 |
 | `set-b-phishing.txt` | **Tập B**: web lừa đảo đã xác minh thủ công (phishunt.io, tinnhiemmang.vn, blocklist web bán hàng lừa đảo, phishing.army) | 185 |
+| `set-c-legit-gambling.json` | **Tập C**: web hợp pháp Tranco thứ hạng 10.000–1.000.000 (`safe`) + web cờ bạc (`dangerous`), gán nhãn thủ công ngày 08/11/2026; không trùng tên miền nào với tập A/B và dữ liệu huấn luyện | 105 + 171 |
+| `set-c-phishing.txt` | **Tập C**: web lừa đảo từ OpenPhish và phishunt.io ngày 08/11/2026, chỉ giữ trang có dấu hiệu rõ ràng | 38 |
 | `eval-dataset.json` | Phần "tune" của tập A, dùng để tìm lỗi khi phát triển | 85 + 18 |
 | `eval-holdout.json`, `eval-holdout2.json` | Phần "test" của tập A, chỉ dùng để báo cáo | 80 + 15, 40 + 0 |
 
@@ -27,6 +29,8 @@ Thư mục này chứa **toàn bộ dữ liệu kiểm thử** dùng để đo �
 |---|---|
 | `set-a.json` | Kết quả của bản hiện tại trên tập A |
 | `set-b.json` | Kết quả của bản hiện tại trên tập B |
+| `set-c.json` | Kết quả của bản hiện tại trên tập C |
+| `set-b-veritytrust-engine-v2.json`, `set-b-veritytrust-engine-v3.json` | Tập B chạy kèm VerityTrust Decision Engine ở chế độ chạy ngầm; trường `jev` chứa câu trả lời của engine cho từng web |
 | `set-b-before-brand-fix.json` | Kết quả trên tập B **trước** khi sửa luật giả danh thương hiệu, tức số đo chưa tinh chỉnh |
 
 Mỗi phần tử có dạng:
@@ -47,5 +51,5 @@ THREAT_FEEDS=off RATE_LIMIT_PER_MIN=0 npm run dev
 ```
 
 ```bash
-npm run eval:a && npm run eval:b && npm run eval:metrics
+npm run eval:a && npm run eval:b && npm run eval:c && npm run eval:metrics
 ```

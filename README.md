@@ -13,7 +13,7 @@ Phát hiện web lừa đảo (phishing), giả mạo ngân hàng/thương hiệ
 ![Node](https://img.shields.io/badge/Node.js-%E2%89%A518-339933?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 
-*Đo trên 1.053 website thật đang hoạt động — [xem cách đo](docs/DANH-GIA.md)*
+*Đo trên 1.367 website thật đang hoạt động — [xem cách đo](docs/DANH-GIA.md)*
 
 </div>
 
@@ -43,17 +43,17 @@ Phát hiện web lừa đảo (phishing), giả mạo ngân hàng/thương hiệ
 
 ## Độ chính xác
 
-Đo trên **1.053 website thật, đang hoạt động** (523 hợp pháp · 305 lừa đảo · 225 cờ bạc), với tra cứu danh sách đen **tắt**, tức hệ thống phải tự phát hiện. Trong ngoặc vuông là khoảng tin cậy 95%.
+Đo trên **1.367 website thật, đang hoạt động** (628 hợp pháp · 343 lừa đảo · 396 cờ bạc, gồm 3 tập A/B/C), với tra cứu danh sách đen **tắt**, tức hệ thống phải tự phát hiện. Trong ngoặc vuông là khoảng tin cậy 95%.
 
 | Chỉ số | Kết quả | Ý nghĩa |
 |---|---|---|
-| **Accuracy** | **95,82%** [94,5 – 97,0] | Tỷ lệ đoán đúng trên tổng số web |
-| **Precision** | **97,09%** [95,5 – 98,5] | Khi Verity báo "nguy hiểm", 97% trường hợp là nguy hiểm thật |
-| **Recall** | **94,53%** [92,5 – 96,4] | Bắt được 94,5% số web nguy hiểm |
-| **F1-Score** | **95,79%** [94,5 – 96,9] | Cân bằng giữa Precision và Recall |
-| **AUC-ROC** | **98,89%** [98,3 – 99,4] | Khả năng phân biệt web tốt/xấu, không phụ thuộc ngưỡng |
-| **FPR** | **2,87%** [1,6 – 4,4] | Tỷ lệ web hợp pháp bị báo nhầm |
-| **MCC** | **91,68%** | Chỉ số tổng hợp, phạt cả báo nhầm lẫn bỏ sót |
+| **Accuracy** | **95,54%** [94,4 – 96,6] | Tỷ lệ đoán đúng trên tổng số web |
+| **Precision** | **97,48%** [96,2 – 98,6] | Khi Verity báo "nguy hiểm", 97,5% trường hợp là nguy hiểm thật |
+| **Recall** | **94,18%** [92,4 – 95,8] | Bắt được 94,2% số web nguy hiểm |
+| **F1-Score** | **95,80%** [94,7 – 96,8] | Cân bằng giữa Precision và Recall |
+| **AUC-ROC** | **98,66%** [98,0 – 99,2] | Khả năng phân biệt web tốt/xấu, không phụ thuộc ngưỡng |
+| **FPR** | **2,87%** [1,6 – 4,3] | Tỷ lệ web hợp pháp bị báo nhầm |
+| **MCC** | **91,10%** | Chỉ số tổng hợp, phạt cả báo nhầm lẫn bỏ sót |
 
 Toàn bộ dữ liệu đo, kết quả từng web và script tính chỉ số đều nằm trong repo: [`eval/`](eval/). Chi tiết theo từng tập, điểm yếu và cách tự đo lại: **[docs/DANH-GIA.md](docs/DANH-GIA.md)**.
 

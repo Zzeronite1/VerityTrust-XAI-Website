@@ -5,7 +5,7 @@ VerityTrust Decision Engine v3 - Horizon-Labs/phishing-scam-detector-base (mmBER
   không cần torch, không cần AVX2, khoảng 1 GB RAM.
 - Giữ nguyên định dạng trả về của v1/v2 (is_phishing / risk_vector / trust_score) để Verity không phải đổi.
 - risk_vector.choice: clean | credential_theft | gambling | scam.
-  Mô hình chỉ biết "có đáng ngờ không"; loại rủi ro được suy từ metadata Verity gửi (biểu mẫu nhạy cảm, từ khoá cờ bạc).
+  Chỉ dùng P(fraud); loại rủi ro được suy từ metadata Verity gửi (biểu mẫu nhạy cảm, từ khoá cờ bạc).
 
 Cài đặt:  pip install onnxruntime tokenizers huggingface_hub numpy fastapi uvicorn
 """
@@ -25,7 +25,10 @@ MODEL_ID = "Horizon-Labs/phishing-scam-detector-base"
 ONNX_FILE = "onnx/model_quantized.onnx"  # int8, ~641 MB; đổi thành onnx/model.onnx nếu muốn bản fp32 (~1,2 GB)
 MAX_LEN = 512                             # mmBERT đọc được 8192 token nhưng 512 đủ cho tiêu đề + đoạn đầu trang, và nhanh
 THREADS = 4                               # Xeon E3-1230 V2: 4 nhân thật
-UNWANTED_MIN = 0.5                        # P(fraud) + P(spam) từ ngưỡng này trở lên mới coi là rủi ro
+FRAUD_MIN = 0.5                           # P(fraud) từ ngưỡng này trở lên mới coi là rủi ro
+# Không dùng nhãn "spam": mô hình học từ email/SMS nên chấm cả web hợp pháp (tin tức, shop) là spam
+# (trung bình 0,77 trên 276 web hợp pháp của tập B). Chỉ "fraud" phân biệt được: AUC 88,5% phishing/hợp pháp,
+# ngưỡng 0,5 cho precision 98,4%.
 
 print("Đang tải mô hình...")
 tokenizer = Tokenizer.from_file(hf_hub_download(MODEL_ID, "tokenizer.json"))
@@ -87,27 +90,26 @@ CREDENTIAL_RE = re.compile(r"mật khẩu|otp|số thẻ|cvv|cccd|seed|cụm t�
 def assess(prompt: str) -> dict:
     fields = parse_metadata(prompt)
     probs = classify(model_text(prompt, fields))
-    p_legit = probs.get("legitimate", 0.0)
-    unwanted = probs.get("fraud", 0.0) + probs.get("spam", 0.0)
+    fraud = probs.get("fraud", 0.0)
 
-    if unwanted < UNWANTED_MIN:
-        choice, confidence = "clean", p_legit
+    if fraud < FRAUD_MIN:
+        choice, confidence = "clean", 1 - fraud
     elif GAMBLING_RE.search(prompt) or GAMBLING_DOMAIN_RE.search(fields.get("tên miền", "")):
-        choice, confidence = "gambling", unwanted
+        choice, confidence = "gambling", fraud
     elif CREDENTIAL_RE.search(fields.get("biểu mẫu", "")) or "Telegram bot" in prompt:
-        choice, confidence = "credential_theft", unwanted
+        choice, confidence = "credential_theft", fraud
     else:
-        choice, confidence = "scam", unwanted
+        choice, confidence = "scam", fraud
 
     return {
-        "is_phishing": {"probability": round(unwanted, 4)},
+        "is_phishing": {"probability": round(fraud, 4)},
         "risk_vector": {
             "choice": choice,
             "confidence": round(confidence, 4),
             "probabilities": {k: round(v, 4) for k, v in probs.items()},
         },
-        # 4.0 = mô hình chắc chắn hợp pháp, 1.0 = chắc chắn lừa đảo/spam
-        "trust_score": {"score": round(1 + 3 * p_legit, 2), "confidence": round(abs(p_legit - 0.5) * 2, 4)},
+        # 4.0 = chắc chắn không lừa đảo, 1.0 = chắc chắn lừa đảo
+        "trust_score": {"score": round(1 + 3 * (1 - fraud), 2), "confidence": round(abs(fraud - 0.5) * 2, 4)},
     }
 
 
