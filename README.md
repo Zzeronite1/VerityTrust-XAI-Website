@@ -71,7 +71,7 @@ flowchart LR
     T1 -->|top 10k / chính thống| S([✅ An toàn])
     T1 -->|danh sách đen / cờ bạc| D([⛔ Nguy hiểm])
     T1 --> T2["Tầng 2<br/>Đọc trang + TLS + tuổi tên miền<br/>+ 2 mô hình học sâu"]
-    T2 -->|điểm &lt; 45 hoặc ≥ 75| R([Kết luận])
+    T2 -->|điểm dưới 45 hoặc từ 75| R([Kết luận])
     T2 -->|trang rỗng/SPA, vùng xám| T3["Tầng 3<br/>Dựng trang bằng Chrome"]
     T3 --> T4["Tầng 4<br/>Trọng tài OpenJev<br/>(tuỳ chọn)"]
     T4 --> R

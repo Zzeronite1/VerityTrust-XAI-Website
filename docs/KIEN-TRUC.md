@@ -26,7 +26,7 @@ flowchart TD
       direction LR
       a2[HTML tĩnh] --- b2[TLS] --- c2[Tuổi tên miền RDAP] --- d2[2 mô hình học sâu]
     end
-    T2 -->|điểm < 45 hoặc ≥ 75| OUT([Kết luận])
+    T2 -->|điểm dưới 45 hoặc từ 75| OUT([Kết luận])
     T2 -->|HTML rỗng / SPA và điểm 45–74| T3[Tầng 3 — Chrome headless dựng trang, chấm lại]
     T2 -->|điểm 45–74| T4
     T3 --> T4[Tầng 4 — Trọng tài OpenJev · tuỳ chọn]
