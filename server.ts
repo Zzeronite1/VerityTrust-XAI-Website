@@ -1807,6 +1807,7 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
             : 'CẢNH BÁO NGUY HIỂM: Phát hiện dấu hiệu lừa đảo mạo danh thương hiệu (Phishing), tên miền rủi ro cao hoặc điều khoản ToS xâm phạm quyền lợi người dùng nghiêm trọng.'))));
 
   return {
+    analysis_engine: 'Động cơ Giám định Nội bộ (Verity Heuristic Engine)',
     targetTitle: targetTitle || (hostname ? `${hostname}` : targetValue),
     targetType,
     trustScore,
@@ -2119,7 +2120,7 @@ Return strictly valid JSON conforming to this schema without markdown formatting
 
     const elapsed = Math.round(performance.now() - requestStartTime);
 
-    // If Gemini model was unavailable, fall back to our high-performance simplified engine
+    // If AI model was unavailable, fall back to our high-performance simplified engine
     if (!parsedReport) {
       parsedReport = runSimplifiedVerificationModel({
         targetValue,
@@ -2129,6 +2130,7 @@ Return strictly valid JSON conforming to this schema without markdown formatting
         lang,
         totalPipelineMs: elapsed,
       });
+      parsedReport.analysis_engine = 'Động cơ Giám định Nội bộ (Verity Heuristic Engine)';
     }
 
     // Safeguard check for illegal gambling or prohibited domains
@@ -2512,7 +2514,7 @@ ${JSON.stringify(result)}`;
       result = {
         trust_score: 10,
         status: 'Dangerous',
-        analysis_engine: result?.analysis_engine ? `${result.analysis_engine} + Chốt chặn Pháp lý (Penalty Gate)` : 'Hệ thống Thẩm định An ninh mạng (Penalty Gate)',
+        analysis_engine: result?.analysis_engine ? `${result.analysis_engine} + Chốt chặn Pháp lý (Penalty Gate)` : 'Động cơ Giám định Nội bộ + Chốt chặn Pháp lý (Penalty Gate)',
         summary: `NGUY HIỂM / VI PHẠM PHÁP LUẬT: Qua phân tích nội dung thực tế từ trang web ("${pageTitle || hostname}"), hệ thống phát hiện website này đang tổ chức và quảng bá các dịch vụ cá cược, sòng bài trực tuyến (casino) hoặc trò chơi đổi thưởng tiền thật. Đây là các hành vi bị nghiêm cấm theo quy định pháp luật Việt Nam.`,
         age_rating: {
           label: 'Cấm dưới 18 tuổi / Bất hợp pháp',
@@ -2553,7 +2555,7 @@ ${JSON.stringify(result)}`;
         result = {
           trust_score: 95,
           status: 'Safe',
-          analysis_engine: 'Verity Security Engine (Heuristic Fallback)',
+          analysis_engine: 'Động cơ Giám định Nội bộ (Verity Heuristic Engine)',
           summary: `Website "${hostname}" thuộc danh mục đơn vị uy tín đã được xác thực danh tính số, sở hữu hạ tầng kết nối an toàn và minh bạch theo quy chuẩn an toàn mạng.`,
           age_rating: {
             label: 'Mọi lứa tuổi (3+)',
@@ -2574,12 +2576,13 @@ ${JSON.stringify(result)}`;
             'Website an toàn, có thể thực hiện giao dịch và truy cập bình thường.',
             'Luôn kiểm tra đúng thanh địa chỉ chính chủ trước khi nhập thông tin cá nhân.'
           ],
-          ai_disclaimer: 'Báo cáo được hỗ trợ thẩm định bởi mô hình Trí tuệ Nhân tạo (AI). Mô hình AI đôi khi có thể có sai sót hoặc chưa cập nhật kịp thời biến động mới nhất; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định giao dịch quan trọng.'
+          ai_disclaimer: 'Báo cáo được thẩm định tự động bởi Động cơ Giám định Nội bộ (Verity Heuristic Engine) kết hợp dữ liệu an ninh mạng quốc gia và đối chiếu quy định pháp luật.'
         };
       } else if (isSuspicious) {
         result = {
           trust_score: 22,
           status: 'Dangerous',
+          analysis_engine: 'Động cơ Giám định Nội bộ (Verity Heuristic Engine)',
           summary: `CẢNH BÁO: Tên miền "${hostname}" sử dụng đuôi mở rộng rủi ro cao hoặc chứa các từ khóa định danh nhạy cảm thường xuất hiện trong các chiến dịch lừa đảo chiếm đoạt tài sản.`,
           age_rating: {
             label: 'Cảnh báo Rủi ro cao / Hạn chế',
@@ -2603,12 +2606,13 @@ ${JSON.stringify(result)}`;
             'TUYỆT ĐỐI KHÔNG nhập số điện thoại, mật khẩu, mã OTP hoặc số thẻ ngân hàng vào trang này.',
             'Đóng tab trình duyệt ngay lập tức để tránh nguy cơ bị cài mã độc ngầm.'
           ],
-          ai_disclaimer: 'Báo cáo được hỗ trợ thẩm định bởi mô hình Trí tuệ Nhân tạo (AI). Mô hình AI đôi khi có thể có sai sót; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định.'
+          ai_disclaimer: 'Báo cáo được thẩm định tự động bởi Động cơ Giám định Nội bộ (Verity Heuristic Engine) kết hợp dữ liệu an ninh mạng quốc gia và đối chiếu quy định pháp luật.'
         };
       } else {
         result = {
           trust_score: 82,
           status: 'Safe',
+          analysis_engine: 'Động cơ Giám định Nội bộ (Verity Heuristic Engine)',
           summary: `Website "${hostname}" hoạt động trên giao thức HTTPS bảo mật, chưa ghi nhận dấu hiệu vi phạm trong danh sách đen an ninh mạng quốc gia.`,
           age_rating: {
             label: 'Phù hợp từ 13 tuổi trở lên',
@@ -2629,7 +2633,7 @@ ${JSON.stringify(result)}`;
             'Trang web đạt chuẩn an toàn cơ bản, có thể sử dụng bình thường.',
             'Cân nhắc chỉ chia sẻ các thông tin cá nhân thực sự cần thiết.'
           ],
-          ai_disclaimer: 'Báo cáo được hỗ trợ thẩm định bởi mô hình Trí tuệ Nhân tạo (AI). Mô hình AI đôi khi có thể có sai sót; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định.'
+          ai_disclaimer: 'Báo cáo được thẩm định tự động bởi Động cơ Giám định Nội bộ (Verity Heuristic Engine) kết hợp dữ liệu an ninh mạng quốc gia và đối chiếu quy định pháp luật.'
         };
       }
     }
@@ -2637,6 +2641,7 @@ ${JSON.stringify(result)}`;
     // Đảm bảo các trường bắt buộc tồn tại
     result.trust_score = typeof result.trust_score === 'number' ? result.trust_score : 50;
     result.status = result.status || (result.trust_score >= 80 ? 'Safe' : result.trust_score >= 50 ? 'Warning' : 'Dangerous');
+    result.analysis_engine = result.analysis_engine || 'Động cơ Giám định Nội bộ (Verity Heuristic Engine)';
     result.summary = result.summary || 'Không có tóm tắt.';
     result.age_rating = result.age_rating || {
       label: result.status === 'Dangerous' ? 'Cấm dưới 18 tuổi / Bất hợp pháp' : 'Mọi lứa tuổi (3+)',
@@ -2652,7 +2657,7 @@ ${JSON.stringify(result)}`;
     ];
     result.red_flags = Array.isArray(result.red_flags) ? result.red_flags : [];
     result.recommendations = Array.isArray(result.recommendations) ? result.recommendations : [];
-    result.ai_disclaimer = result.ai_disclaimer || 'Báo cáo được tổng hợp tự động bởi mô hình Gemini AI kết hợp các thuật toán rà soát an ninh mạng và chốt chặn pháp lý. Mô hình AI đôi khi có thể có sai sót hoặc chưa cập nhật kịp thời các biến động mới nhất của website; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định giao dịch quan trọng.';
+    result.ai_disclaimer = result.ai_disclaimer || `Báo cáo được tổng hợp tự động bởi ${result.analysis_engine} kết hợp các thuật toán rà soát an ninh mạng và chốt chặn pháp lý. Hệ thống có thể có sai sót hoặc chưa cập nhật kịp thời các biến động mới nhất của website; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định giao dịch quan trọng.`;
     result.analyzed_url = targetUrl;
 
     return res.json(result);

@@ -533,7 +533,7 @@
               <div class="space-y-1">
                 <div class="font-bold text-amber-300">Khẳng định Minh bạch & Giới hạn Mô hình AI:</div>
                 <div id="ai-disclaimer-text">
-                  Báo cáo được tổng hợp tự động bởi mô hình Gemini AI kết hợp các thuật toán rà soát an ninh mạng và chốt chặn pháp lý. Mô hình AI đôi khi có thể có sai sót hoặc chưa cập nhật kịp thời các biến động mới nhất của website; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định giao dịch quan trọng.
+                  Báo cáo được tổng hợp tự động bởi Động cơ Phân tích An ninh mạng kết hợp các thuật toán rà soát hạ tầng và chốt chặn pháp lý. Hệ thống có thể có sai sót hoặc chưa cập nhật kịp thời các biến động mới nhất của website; người dùng nên kết hợp đối chiếu thực tế trước khi đưa ra quyết định giao dịch quan trọng.
                 </div>
               </div>
             </div>
@@ -1037,7 +1037,7 @@
         // Nội dung tóm tắt, URL & Động cơ
         document.getElementById('summary-text').textContent = data.summary || 'Không có tóm tắt.';
         document.getElementById('analyzed-url-display').textContent = '🔗 ' + (data.analyzed_url || '');
-        document.getElementById('engine-display').textContent = '⚡ Động cơ: ' + (data.analysis_engine || 'Google Gemini AI (gemini-3.5-flash-lite)');
+        document.getElementById('engine-display').textContent = '⚡ Động cơ: ' + (data.analysis_engine || 'Động cơ Giám định Nội bộ (Verity Heuristic Engine)');
 
         // 1. Độ tuổi phù hợp (Age Rating)
         const age = data.age_rating || {};
@@ -1170,7 +1170,7 @@
         const phases = [
           'Đang tải và trích xuất nội dung văn bản từ trang web...',
           'Đang rà soát từ khóa và các liên kết hoạt động...',
-          'Đang đưa nội dung vào Gemini AI phân tích ngữ nghĩa...',
+          'Đang đưa nội dung vào Động cơ AI phân tích ngữ nghĩa...',
           'Đang đối chiếu quy định pháp luật và cấp Báo cáo...',
         ];
         let phaseIdx = 0;
