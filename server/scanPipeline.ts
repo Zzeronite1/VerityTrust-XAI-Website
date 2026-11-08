@@ -134,11 +134,20 @@ export async function runScanPipeline(targetUrl: string): Promise<PipelineResult
 
   // ---------------------------------------------------------------- Tầng 4 (vùng xám)
   const inGrayZone = assessment.score >= GRAY_ZONE_MIN && assessment.score <= GRAY_ZONE_MAX;
+  const jevCfg = getJevConfig();
+  // Chạy ngầm có thể đo trên mọi web (JEV_GRAY_ZONE_ONLY=false) vì không đổi điểm
+  if (jevCfg.shadow && jevCfg.mode !== 'off' && (inGrayZone || !jevCfg.grayZoneOnly)) {
+    const jevDecision = await queryJevDecision(evidence, assessment, { ignoreGrayZone: true });
+    mark(4, 'passed', jevDecision
+      ? `Trọng tài ${jevDecision.engine} chạy ngầm: ${jevDecision.verdict} (không đổi điểm ${assessment.score})`
+      : 'Trọng tài chạy ngầm không phản hồi');
+    return finish(evidence, assessment, renderedByHeadless ? 3 : 2, `Kết luận theo bằng chứng (${assessment.score}/100), trọng tài chạy ngầm`, { jevDecision, renderedByHeadless });
+  }
   if (!inGrayZone) {
     tiers.push({ tier: 4, name: TIER_NAMES[4], status: 'skipped', ms: 0, note: `Điểm ${assessment.score} đã dứt khoát (ngoài vùng xám ${GRAY_ZONE_MIN}-${GRAY_ZONE_MAX})` });
     return finish(evidence, assessment, renderedByHeadless ? 3 : 2, `Kết luận theo bằng chứng kỹ thuật (${assessment.score}/100)`, { renderedByHeadless });
   }
-  if (getJevConfig().mode === 'off') {
+  if (jevCfg.mode === 'off') {
     tiers.push({ tier: 4, name: TIER_NAMES[4], status: 'skipped', ms: 0, note: 'Vùng xám nhưng chưa bật trọng tài (JEV_MODE=off)' });
     return finish(evidence, assessment, renderedByHeadless ? 3 : 2, `Vùng xám, kết luận theo bằng chứng (${assessment.score}/100)`, { renderedByHeadless });
   }

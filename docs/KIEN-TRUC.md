@@ -120,10 +120,29 @@ Mã: [`server/headless.ts`](../server/headless.ts). Cấu hình: `HEADLESS_RENDE
 | `off` (mặc định) | — | — |
 | `api` | `https://api.typesafe.ai/v1/systemone`, model `jev-latest` | `JEV_API_KEY` (hoặc `TYPESAFE_API_KEY`) lấy tại [console.typesafe.ai](https://console.typesafe.ai/keys) |
 | `openjev` | `OPENJEV_ENDPOINT` (mặc định `http://localhost:8080/v1/systemone`) | máy chủ tự host tương thích Jev |
+| `veritytrust` | `VERITYTRUST_ENGINE_URL` (mặc định cổng OmniRoute `http://homenasproxmox.duckdns.org:20128/v1/chat/completions`), model `veritytrust-fast-decision` | `VERITYTRUST_ENGINE_KEY` |
+
+**Chạy ngầm (`JEV_SHADOW=true`):** vẫn hỏi trọng tài và ghi câu trả lời vào `score_breakdown.jev_decision` (kèm `shadow: true`), nhưng **không đổi điểm**. Dùng để đo một trọng tài mới trước khi tin dùng. Thêm `JEV_GRAY_ZONE_ONLY=false` để hỏi trọng tài cho mọi web, không riêng vùng xám; công cụ đo `scripts/eval-accuracy.ts` tự lưu câu trả lời vào trường `jev` của từng web.
 
 - Lỗi mạng, sai key hoặc quá thời gian (`JEV_TIMEOUT_MS`, mặc định 5 giây) → giữ nguyên kết luận theo bằng chứng.
 - `JEV_MODE=api` mà thiếu key → tầng này tự bỏ qua, không gửi request.
 - Tóm tắt nội dung trang chỉ được gửi tới Jev khi bạn bật tầng này.
+
+### VerityTrust Decision Engine (`JEV_MODE=veritytrust`)
+
+Một máy chủ riêng, đặt sau cổng OmniRoute (chuẩn OpenAI). Mã nguồn bản hiện tại: [`engine/engine.py`](../engine/engine.py), dùng mô hình phân loại lừa đảo đa ngôn ngữ [`Horizon-Labs/phishing-scam-detector-base`](https://huggingface.co/Horizon-Labs/phishing-scam-detector-base) (mmBERT, ONNX int8, chạy CPU bằng onnxruntime, khoảng 1 GB RAM). Bản cũ dùng mô hình NLI zero-shot `multilingual-MiniLMv2-L6-mnli-xnli` và bị loại sau khi đo (xem [DANH-GIA.md](DANH-GIA.md#trọng-tài-veritytrust-decision-engine-minilmv2-zero-shot)). Verity gửi **một dòng metadata** trong `messages[0].content`:
+
+```
+Tên miền: … | SSL: Hợp lệ/Hết hạn/Không có | Tuổi tên miền: … ngày | Xếp hạng Tranco: … | Biểu mẫu: Bắt buộc điền … | Tiêu đề: … | Nội dung: …
+```
+
+và nhận lại JSON trong `choices[0].message.content`:
+
+```json
+{ "is_phishing": { "probability": 0.94 }, "risk_vector": { "choice": "credential_theft", "confidence": 0.93 }, "trust_score": { "score": 1.15, "confidence": 0.94 } }
+```
+
+`risk_vector.choice` là `clean`, `credential_theft`, `gambling` hoặc `scam` (shop giả, đầu tư ảo). Cách quy đổi sang câu trả lời trọng tài: `credential_theft`, `gambling`, `scam` chỉ được tính khi `is_phishing ≥ 0,5`, với độ tin cậy = min(`is_phishing`, `risk_vector.confidence`); `clean` tính là `safe`. Sau đó áp dụng như bảng tác động ở trên.
 
 Mã: [`server/jevDecision.ts`](../server/jevDecision.ts).
 

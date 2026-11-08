@@ -4,20 +4,26 @@
  *   - JEV_MODE=off      : (Mặc định) Tắt, dùng động cơ bằng chứng và mạng nơ-ron Hashed MLP nội bộ (0đ, nhẹ máy, không cần AVX2).
  *   - JEV_MODE=api      : Sử dụng TypeSafe AI Jev Cloud API thương mại (cần JEV_API_KEY).
  *   - JEV_MODE=openjev  : Sử dụng OpenJev tự host (mã nguồn mở / open-weights) qua OPENJEV_ENDPOINT.
+ *   - JEV_MODE=veritytrust : VerityTrust Decision Engine qua cổng OpenAI-compatible (OmniRoute), model veritytrust-fast-decision.
+ * JEV_SHADOW=true: vẫn gọi trọng tài nhưng chỉ ghi lại kết quả, không đổi điểm (dùng để đo trước khi tin dùng).
  */
 
 import type { SiteEvidence } from './evidence.ts';
 import type { RiskAssessment } from './riskScoring.ts';
 
-export type JevMode = 'off' | 'api' | 'openjev';
+export type JevMode = 'off' | 'api' | 'openjev' | 'veritytrust';
 
 /** Vùng xám: điểm bằng chứng chưa dứt khoát, cần trọng tài phân xử (Tầng 4) */
 export const GRAY_ZONE_MIN = 45;
 export const GRAY_ZONE_MAX = 74;
 
 export interface JevDecisionResult {
-  engine: 'jev-api' | 'openjev';
+  engine: 'jev-api' | 'openjev' | 'veritytrust';
   latencyMs: number;
+  /** true khi JEV_SHADOW=true: kết quả chỉ được ghi lại, không áp vào điểm */
+  shadow?: boolean;
+  /** Câu trả lời gốc của VerityTrust Decision Engine (is_phishing, risk_vector, trust_score) */
+  raw?: unknown;
   isCredentialHarvesting: boolean;
   isCredentialHarvestingConfidence: number;
   isFinancialOrGamblingScam: boolean;
@@ -35,13 +41,17 @@ export interface JevConfig {
   apiKey: string;
   openJevEndpoint: string;
   openJevApiKey: string;
+  veritytrustUrl: string;
+  veritytrustKey: string;
+  veritytrustModel: string;
+  shadow: boolean;
   grayZoneOnly: boolean;
   timeoutMs: number;
 }
 
 export function getJevConfig(): JevConfig {
   const rawMode = (process.env.JEV_MODE || 'off').toLowerCase().trim();
-  const mode: JevMode = rawMode === 'api' || rawMode === 'openjev' ? rawMode : 'off';
+  const mode: JevMode = rawMode === 'api' || rawMode === 'openjev' || rawMode === 'veritytrust' ? rawMode : 'off';
   return {
     mode,
     model: process.env.JEV_MODEL || 'jev-latest',
@@ -50,6 +60,10 @@ export function getJevConfig(): JevConfig {
     // Các bản OpenJev tự host đều mô phỏng cùng endpoint System One của Jev
     openJevEndpoint: process.env.OPENJEV_ENDPOINT || 'http://localhost:8080/v1/systemone',
     openJevApiKey: process.env.OPENJEV_API_KEY || '',
+    veritytrustUrl: process.env.VERITYTRUST_ENGINE_URL || 'http://homenasproxmox.duckdns.org:20128/v1/chat/completions',
+    veritytrustKey: process.env.VERITYTRUST_ENGINE_KEY || '',
+    veritytrustModel: process.env.VERITYTRUST_ENGINE_MODEL || 'veritytrust-fast-decision',
+    shadow: process.env.JEV_SHADOW === 'true',
     grayZoneOnly: process.env.JEV_GRAY_ZONE_ONLY !== 'false', // Mặc định chỉ gọi cho ca vùng xám 45-74 điểm
     timeoutMs: parseInt(process.env.JEV_TIMEOUT_MS || '5000', 10),
   };
@@ -126,14 +140,16 @@ export const STANDARD_JEV_QUESTIONS = {
  */
 let warnedMissingKey = false;
 
-export async function queryJevDecision(e: SiteEvidence, a: RiskAssessment): Promise<JevDecisionResult | null> {
+export async function queryJevDecision(e: SiteEvidence, a: RiskAssessment, opts: { ignoreGrayZone?: boolean } = {}): Promise<JevDecisionResult | null> {
   const cfg = getJevConfig();
   if (cfg.mode === 'off') return null;
 
   // Nếu chỉ bật cho vùng xám (45 - 74 điểm) và bằng chứng đã dứt khoát rõ ràng -> Bỏ qua
-  if (cfg.grayZoneOnly && (a.score < GRAY_ZONE_MIN || a.score > GRAY_ZONE_MAX)) {
+  if (!opts.ignoreGrayZone && cfg.grayZoneOnly && (a.score < GRAY_ZONE_MIN || a.score > GRAY_ZONE_MAX)) {
     return null;
   }
+
+  if (cfg.mode === 'veritytrust') return queryVeritytrustEngine(e, a, cfg);
 
   const targetUrl = cfg.mode === 'api' ? cfg.apiUrl : cfg.openJevEndpoint;
   const headers: Record<string, string> = {
@@ -225,9 +241,94 @@ export async function queryJevDecision(e: SiteEvidence, a: RiskAssessment): Prom
       isBrandImpersonationConfidence: bRes.conf,
       verdict: finalChoice,
       verdictProbabilities: probs,
+      shadow: cfg.shadow,
     };
   } catch (err: any) {
     console.warn(`[Jev Gateway] Không gọi được ${cfg.mode} (${err?.message || err}) sau ${Date.now() - t0}ms. Rơi về chấm điểm bằng chứng nội bộ.`);
+    return null;
+  }
+}
+
+/**
+ * Chuỗi metadata một dòng cho VerityTrust Decision Engine, theo đúng dạng engine được huấn luyện:
+ * "Tên miền: … | SSL: … | Biểu mẫu: …"
+ */
+export function buildVeritytrustMetadata(e: SiteEvidence): string {
+  const html = e.html;
+  const parts = [`Tên miền: ${(e.finalDomain || e.domain).host}`];
+  if (e.tls) parts.push(`SSL: ${!e.tls.ok ? 'Không có' : e.tls.daysRemaining !== null && e.tls.daysRemaining < 0 ? 'Hết hạn' : e.tls.authorized ? 'Hợp lệ' : 'Không hợp lệ'}`);
+  if (e.domainAge?.ageDays != null) parts.push(`Tuổi tên miền: ${e.domainAge.ageDays} ngày`);
+  parts.push(`Xếp hạng Tranco: ${e.popularityRank ?? 'ngoài top 1 triệu'}`);
+  if (html) {
+    const fields = [...(html.hasPasswordField ? ['mật khẩu'] : []), ...html.sensitiveFields];
+    parts.push(`Biểu mẫu: ${fields.length ? `Bắt buộc điền ${[...new Set(fields)].join(', ')}` : 'không có'}`);
+    if (html.externalFormAction) parts.push(`Gửi biểu mẫu tới: ${html.externalFormAction}`);
+    if (html.telegramExfiltration) parts.push('Gửi dữ liệu qua Telegram bot');
+    if (html.brandMentions.length) parts.push(`Nhắc tới thương hiệu: ${html.brandMentions.join(', ')}`);
+    // "|" là dấu phân cách trường, nên thay trong tiêu đề/nội dung để engine tách trường đúng
+    if (html.title) parts.push(`Tiêu đề: ${html.title.replace(/\|/g, '/').slice(0, 120)}`);
+    if (html.text) parts.push(`Nội dung: ${html.text.replace(/\s+/g, ' ').replace(/\|/g, '/').slice(0, 1500)}`);
+  }
+  return parts.join(' | ');
+}
+
+/**
+ * VerityTrust Decision Engine (OpenAI-compatible chat completions). Nội dung trả về là JSON:
+ * { is_phishing: { probability }, risk_vector: { choice: clean|credential_theft|gambling|scam, confidence }, trust_score: { score 1-4, confidence } }
+ */
+async function queryVeritytrustEngine(e: SiteEvidence, a: RiskAssessment, cfg: JevConfig): Promise<JevDecisionResult | null> {
+  if (!cfg.veritytrustKey) {
+    if (!warnedMissingKey) console.warn('[Jev Gateway] JEV_MODE=veritytrust nhưng chưa có VERITYTRUST_ENGINE_KEY - bỏ qua Tầng 4.');
+    warnedMissingKey = true;
+    return null;
+  }
+  const t0 = Date.now();
+  try {
+    const res = await fetch(cfg.veritytrustUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.veritytrustKey}` },
+      body: JSON.stringify({ model: cfg.veritytrustModel, messages: [{ role: 'user', content: buildVeritytrustMetadata(e) }] }),
+      signal: AbortSignal.timeout(cfg.timeoutMs),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.warn(`[Jev Gateway] veritytrust trả về lỗi HTTP ${res.status}: ${body.slice(0, 200) || res.statusText}`);
+      return null;
+    }
+    const data: any = await res.json();
+    const raw = JSON.parse(data?.choices?.[0]?.message?.content ?? '');
+    const pPhish = Number(raw?.is_phishing?.probability);
+    const choice = String(raw?.risk_vector?.choice ?? '');
+    const choiceConf = Number(raw?.risk_vector?.confidence);
+    if (!Number.isFinite(pPhish) || !Number.isFinite(choiceConf)) throw new Error('nội dung trả về sai định dạng');
+
+    // Chỉ tin khi xác suất lừa đảo và loại rủi ro cùng chỉ một hướng: độ tin cậy = giá trị nhỏ hơn
+    const harmConf = Math.min(pPhish, choiceConf);
+    const isCred = choice === 'credential_theft' && pPhish >= 0.5;
+    const isGambling = choice === 'gambling' && pPhish >= 0.5;
+    const isScam = choice === 'scam' && pPhish >= 0.5; // shop giả, đầu tư ảo… (engine v3)
+    const safeProb = choice === 'clean' ? Math.min(1 - pPhish, choiceConf) : 0;
+    const verdict: JevDecisionResult['verdict'] = choice === 'clean' && pPhish < 0.5 ? 'safe' : isCred ? 'phishing' : isGambling ? 'gambling' : isScam ? 'malicious' : 'suspicious';
+    const latencyMs = Date.now() - t0;
+    console.log(`[Jev Gateway] 🎯 Phân xử (veritytrust, ${cfg.veritytrustModel}${cfg.shadow ? ', chạy ngầm' : ''}) ${latencyMs}ms: ${choice} (phishing ${(pPhish * 100).toFixed(0)}%, loại ${(choiceConf * 100).toFixed(0)}%)`);
+
+    return {
+      engine: 'veritytrust',
+      latencyMs,
+      isCredentialHarvesting: isCred,
+      isCredentialHarvestingConfidence: isCred ? harmConf : 0,
+      isFinancialOrGamblingScam: isGambling || isScam,
+      isFinancialOrGamblingScamConfidence: isGambling || isScam ? harmConf : 0,
+      // Engine không tách riêng giả danh thương hiệu; chỉ coi là giả danh khi trang có nhắc tới thương hiệu
+      isBrandImpersonation: isCred && (e.html?.brandMentions.length ?? 0) > 0,
+      isBrandImpersonationConfidence: isCred && (e.html?.brandMentions.length ?? 0) > 0 ? harmConf : 0,
+      verdict,
+      verdictProbabilities: { safe: safeProb, phishing: isCred ? harmConf : 0, gambling: isGambling ? harmConf : 0, malicious: isScam ? harmConf : 0 },
+      shadow: cfg.shadow,
+      raw,
+    };
+  } catch (err: any) {
+    console.warn(`[Jev Gateway] Không gọi được veritytrust (${err?.message || err}) sau ${Date.now() - t0}ms. Rơi về chấm điểm bằng chứng nội bộ.`);
     return null;
   }
 }
@@ -238,7 +339,7 @@ export async function queryJevDecision(e: SiteEvidence, a: RiskAssessment): Prom
  * các yếu tố rủi ro có giải thích minh bạch (Factor Breakdown).
  */
 export function applyJevDecision(a: RiskAssessment, j: JevDecisionResult): RiskAssessment {
-  const engineName = j.engine === 'jev-api' ? 'Jev AI (TypeSafe)' : 'OpenJev Decision Gateway';
+  const engineName = j.engine === 'jev-api' ? 'Jev AI (TypeSafe)' : j.engine === 'veritytrust' ? 'VerityTrust Decision Engine' : 'OpenJev Decision Gateway';
   const factors = [...a.factors];
   let score = a.score;
   let cap = a.cap;

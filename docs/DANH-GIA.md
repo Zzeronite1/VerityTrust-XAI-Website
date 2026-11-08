@@ -92,6 +92,25 @@ Những ca Verity còn sai, rút từ tập B:
 
 ---
 
+## Trọng tài VerityTrust Decision Engine (MiniLMv2 zero-shot)
+
+Đo ngày 08/11/2026 trên tập B ở chế độ **chạy ngầm** (`JEV_MODE=veritytrust JEV_SHADOW=true JEV_GRAY_ZONE_ONLY=false`): engine được hỏi cho mọi web nhưng không đổi điểm. 526 web có đủ dữ liệu để gửi; kết quả từng web trong [`eval/results/set-b-veritytrust-engine-v2.json`](../eval/results/set-b-veritytrust-engine-v2.json).
+
+| | AUC | Accuracy | Recall | FPR |
+|---|---|---|---|---|
+| Engine riêng, luật chặn `is_phishing > 0,6` hoặc `choice ≠ clean` | 57,9% | 49,2% | 9,6% | 14,9% |
+| Verity (không có engine) | 97,0% | 92,6% | 90,4% | 5,4% |
+| Verity + engine áp điểm ở vùng xám (giả lập) | — | 92,2% | 89,6% | 5,4% |
+
+- **v1 của engine** (so "lừa đảo" với "an toàn" rồi khuếch đại) gần như chấm mọi thứ là lừa đảo: 204/271 web hợp pháp bị xếp `credential_theft`, xác suất lừa đảo trung bình 0,76; cả chuỗi `hello` cũng ra 98%.
+- **v2** (chấm từng giả thuyết độc lập) hết báo động giả, nhưng 169/185 web lừa đảo và 57/65 web cờ bạc vẫn bị xếp `clean`. AUC 58% chỉ nhỉnh hơn đoán ngẫu nhiên (50%).
+- **Lý do:** mô hình NLI zero-shot chỉ đoán theo câu chữ của dòng metadata, không biết `vietcombank.com.vn` là thật còn `vietcombank-otp.vip` là giả. Muốn engine có ích cần fine-tune trên dữ liệu đã gán nhãn.
+- **Khuyến nghị:** chỉ dùng ở chế độ chạy ngầm cho tới khi đo lại đạt AUC cao.
+
+Phân tích lại: `python3 scripts/analyze-jev-shadow.py eval/results/set-b-veritytrust-engine-v2.json`.
+
+---
+
 ## Tự đo lại
 
 **1. Chạy máy chủ** với danh sách đen tắt và không giới hạn tần suất:

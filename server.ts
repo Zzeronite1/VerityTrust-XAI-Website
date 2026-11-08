@@ -2723,8 +2723,8 @@ async function computeAnalyzeResult(targetUrl: string, hostname: string): Promis
     result = {
       trust_score: assessment.score,
       status: assessment.status,
-      analysis_engine: jevDecision
-        ? `${jevDecision.engine === 'jev-api' ? 'Jev AI (TypeSafe)' : 'OpenJev Gateway'} + Verity Evidence Engine`
+      analysis_engine: jevDecision && !jevDecision.shadow
+        ? `${jevDecision.engine === 'jev-api' ? 'Jev AI (TypeSafe)' : jevDecision.engine === 'veritytrust' ? 'VerityTrust Decision Engine' : 'OpenJev Gateway'} + Verity Evidence Engine`
         : 'Verity Evidence Engine (DNS · TLS · RDAP · Tranco · Threat Intel · Deep Learning)',
       summary: evidenceSummary(evidence, assessment),
       age_rating: assessment.status === 'Dangerous'
