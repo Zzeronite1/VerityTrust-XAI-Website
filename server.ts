@@ -86,10 +86,10 @@ const ai = (!IS_OPENROUTER && RAW_API_KEY)
  *    - gemini-1.5-pro: Model dự phòng 3 (chất lượng phân tích chuyên sâu)
  */
 const OPENROUTER_MODELS_CASCADE: string[] = [
-  'openrouter/free',                    // Ưu tiên 1: Tự động định tuyến đến free model nhanh & khả dụng nhất (1-2s)
-  'liquid/lfm-2.5-2.6b:free',           // Dự phòng 1: Model nhỏ gọn, suy luận trực tiếp không tốn token suy luận ngầm
-  'cohere/north-mini-code:free',        // Dự phòng 2: Chuyên gia phân tích mã nguồn và cấu trúc web
-  'nvidia/nemotron-3.5-super-vl:free',  // Dự phòng 3: Dự phòng bổ sung
+  'cohere/north-mini-code:free',        // Quán quân tốc độ (~500ms - 800ms), chuyên gia phân tích web/mã nguồn, ổn định nhất
+  'nvidia/nemotron-3.5-super-vl:free',  // NVIDIA Multimodal Model (~550ms), khả năng suy luận và ngữ cảnh xuất sắc
+  'nvidia/nemotron-3.5-lightning:free', // NVIDIA Lightning (~650ms), phản hồi tức thì
+  'openrouter/free',                    // Smart Router tự động định tuyến (1s - 2s)
 ];
 
 const GOOGLE_GEMINI_MODELS_CASCADE: string[] = [
@@ -140,8 +140,12 @@ async function callOpenRouter(modelName: string, options: {
     messages,
     temperature: options.temperature ?? 0.2,
     max_tokens: options.maxTokens ?? 650,
-    reasoning: { effort: 'none' }, // Triệt tiêu thời gian suy luận ngầm để ép tốc độ phản hồi < 2-3s
   };
+
+  // Chỉ gắn reasoning effort 'none' cho các model hỗ trợ tắt suy luận ngầm (tránh HTTP 400)
+  if (!modelName.includes('liquid') && !modelName.includes('flint')) {
+    payload.reasoning = { effort: 'none' };
+  }
 
   if (options.responseMimeType === 'application/json') {
     payload.response_format = { type: 'json_object' };
