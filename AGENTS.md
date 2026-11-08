@@ -11,3 +11,4 @@
 ## 2. Bảo mật môi trường
 - Không bao giờ commit file chứa bí mật API key thật (`.env`).
 - Chỉ commit `.env.example` hoặc các file mã nguồn công khai.
+

@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch server.ts",
+    "dev": "tsx server.ts",
+    "dev:watch": "tsx watch --ignore dist --ignore .git --ignore scripts server.ts",
     "start": "tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",

@@ -13,6 +13,17 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ============================================================================
+// CRASH-PROOF PROCESS GUARDS: Triệt tiêu hoàn toàn nguy cơ sập server
+// ============================================================================
+process.on('uncaughtException', (err: any) => {
+  console.warn('[Process Guard] 🛡️ Ngăn chặn crash từ ngoại lệ chưa bắt (Uncaught Exception):', err?.message || err);
+});
+
+process.on('unhandledRejection', (reason: any) => {
+  console.warn('[Process Guard] 🛡️ Ngăn chặn crash từ Promise Rejection chưa xử lý:', reason?.message || reason);
+});
+
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
@@ -420,12 +431,15 @@ const PROBE_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 async function probeDNS(hostname: string, timeoutMs = 500): Promise<{ ip: string | null; lookupMs: number; error?: string }> {
   const start = performance.now();
   try {
-    const lookupPromise = dns.lookup(hostname);
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('DNS Timeout')), timeoutMs)
+    const lookupPromise = dns.lookup(hostname).catch(err => ({ address: null, err }));
+    const timeoutPromise = new Promise<{ address: null; err: Error }>((resolve) =>
+      setTimeout(() => resolve({ address: null, err: new Error('DNS Timeout') }), timeoutMs)
     );
     const result = await Promise.race([lookupPromise, timeoutPromise]);
-    return { ip: result.address, lookupMs: Math.round(performance.now() - start) };
+    if (result && 'err' in result && result.err) {
+      return { ip: null, lookupMs: Math.round(performance.now() - start), error: result.err.message };
+    }
+    return { ip: (result as any)?.address || null, lookupMs: Math.round(performance.now() - start) };
   } catch (err: any) {
     return { ip: null, lookupMs: Math.round(performance.now() - start), error: err.message };
   }
@@ -443,43 +457,17 @@ async function probeTLS(hostname: string, port = 443, timeoutMs = 350): Promise<
   const start = performance.now();
   return new Promise((resolve) => {
     let finished = false;
-    const socket = tls.connect(
-      {
-        host: hostname,
-        port: port || 443,
-        servername: hostname,
-        rejectUnauthorized: false,
-        timeout: timeoutMs,
-      },
-      () => {
-        if (finished) return;
-        finished = true;
-        const cert = socket.getPeerCertificate();
-        const protocol = socket.getProtocol();
-        const authorized = socket.authorized;
-        let daysRemaining: number | null = null;
-        if (cert && cert.valid_to) {
-          const exp = new Date(cert.valid_to).getTime();
-          daysRemaining = Math.max(0, Math.round((exp - Date.now()) / (1000 * 60 * 60 * 24)));
-        }
-        const rawIssuer = cert?.issuer?.O || cert?.issuer?.CN || null;
-        const issuer = Array.isArray(rawIssuer) ? rawIssuer.join(', ') : rawIssuer;
-        socket.destroy();
-        resolve({
-          protocol,
-          authorized,
-          issuer,
-          validTo: cert?.valid_to || null,
-          daysRemaining,
-          handshakeMs: Math.round(performance.now() - start),
-        });
-      }
-    );
+    let socket: any = null;
 
     const onTimeoutOrError = (errMessage: string) => {
       if (finished) return;
       finished = true;
-      socket.destroy();
+      try {
+        if (socket) {
+          socket.removeAllListeners();
+          socket.destroy();
+        }
+      } catch {}
       resolve({
         protocol: null,
         authorized: false,
@@ -491,8 +479,52 @@ async function probeTLS(hostname: string, port = 443, timeoutMs = 350): Promise<
       });
     };
 
-    socket.on('timeout', () => onTimeoutOrError('TLS Socket Timeout'));
-    socket.on('error', (err) => onTimeoutOrError(err.message));
+    try {
+      socket = tls.connect(
+        {
+          host: hostname,
+          port: port || 443,
+          servername: hostname,
+          rejectUnauthorized: false,
+          timeout: timeoutMs,
+        },
+        () => {
+          if (finished) return;
+          finished = true;
+          try {
+            const cert = socket.getPeerCertificate();
+            const protocol = socket.getProtocol();
+            const authorized = socket.authorized;
+            let daysRemaining: number | null = null;
+            if (cert && cert.valid_to) {
+              const exp = new Date(cert.valid_to).getTime();
+              daysRemaining = Math.max(0, Math.round((exp - Date.now()) / (1000 * 60 * 60 * 24)));
+            }
+            const rawIssuer = cert?.issuer?.O || cert?.issuer?.CN || null;
+            const issuer = Array.isArray(rawIssuer) ? rawIssuer.join(', ') : rawIssuer;
+            socket.removeAllListeners();
+            socket.destroy();
+            resolve({
+              protocol,
+              authorized,
+              issuer,
+              validTo: cert?.valid_to || null,
+              daysRemaining,
+              handshakeMs: Math.round(performance.now() - start),
+            });
+          } catch (e: any) {
+            onTimeoutOrError(e.message);
+          }
+        }
+      );
+
+      socket.on('timeout', () => onTimeoutOrError('TLS Socket Timeout'));
+      socket.on('error', (err: any) => onTimeoutOrError(err?.message || 'TLS Socket Error'));
+    } catch (connectErr: any) {
+      onTimeoutOrError(connectErr?.message || 'TLS Connect Failed');
+    }
+  });
+}
   });
 }
 
