@@ -75,10 +75,10 @@ const ai = (!IS_OPENROUTER && RAW_API_KEY)
  *    - gemini-1.5-pro: Model dự phòng 3 (chất lượng phân tích chuyên sâu)
  */
 const OPENROUTER_MODELS_CASCADE: string[] = [
-  'liquid/lfm-2.5-2.6b:free',
-  'openrouter/free',
-  'nvidia/nemotron-3.5-super-vl:free',
-  'nvidia/nemotron-3.5-lightning:free',
+  'openrouter/free',                    // Ưu tiên 1: Tự động định tuyến đến free model nhanh & khả dụng nhất (1-2s)
+  'liquid/lfm-2.5-2.6b:free',           // Dự phòng 1: Model nhỏ gọn, suy luận trực tiếp không tốn token suy luận ngầm
+  'cohere/north-mini-code:free',        // Dự phòng 2: Chuyên gia phân tích mã nguồn và cấu trúc web
+  'nvidia/nemotron-3.5-super-vl:free',  // Dự phòng 3: Dự phòng bổ sung
 ];
 
 const GOOGLE_GEMINI_MODELS_CASCADE: string[] = [
@@ -94,6 +94,7 @@ async function callOpenRouter(modelName: string, options: {
   responseMimeType?: string;
   temperature?: number;
   timeoutMs?: number;
+  maxTokens?: number;
 }): Promise<string> {
   const messages: any[] = [];
   if (options.systemInstruction) {
@@ -127,6 +128,8 @@ async function callOpenRouter(modelName: string, options: {
     model: modelName,
     messages,
     temperature: options.temperature ?? 0.2,
+    max_tokens: options.maxTokens ?? 650,
+    reasoning: { effort: 'none' }, // Triệt tiêu thời gian suy luận ngầm để ép tốc độ phản hồi < 2-3s
   };
 
   if (options.responseMimeType === 'application/json') {
@@ -134,7 +137,7 @@ async function callOpenRouter(modelName: string, options: {
   }
 
   const controller = new AbortController();
-  const timeoutMs = options.timeoutMs ?? (IS_OPENROUTER ? 15000 : 8000);
+  const timeoutMs = options.timeoutMs ?? (IS_OPENROUTER ? 4500 : 5000);
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
@@ -157,7 +160,12 @@ async function callOpenRouter(modelName: string, options: {
     }
 
     const data = await res.json();
-    const content = data?.choices?.[0]?.message?.content;
+    let content = data?.choices?.[0]?.message?.content;
+    if (!content && data?.choices?.[0]?.message?.reasoning) {
+      const reasoning = data.choices[0].message.reasoning;
+      const jsonMatch = reasoning.match(/\{[\s\S]*\}/);
+      if (jsonMatch) content = jsonMatch[0];
+    }
     if (!content) {
       throw new Error('OpenRouter response returned empty choices');
     }
@@ -222,21 +230,31 @@ async function generateAIWithFastFailover(options: {
   temperature?: number;
   models?: string[];
   timeoutMs?: number;
+  maxTokens?: number;
 }): Promise<{ text: string; modelName: string; provider: 'openrouter' | 'google' } | null> {
   const isOR = IS_OPENROUTER;
   const defaultModels = isOR ? OPENROUTER_MODELS_CASCADE : GOOGLE_GEMINI_MODELS_CASCADE;
   const models = options.models || defaultModels;
-  const timeoutMs = options.timeoutMs ?? (isOR ? 15000 : 8000);
+  const timeoutMs = options.timeoutMs ?? (isOR ? 4500 : 5000);
   const providerLabel = isOR ? 'OpenRouter AI' : 'Google Gemini AI';
 
+  // Tổng thời gian tối đa cho toàn bộ chu trình AI không bao giờ vượt quá 6500ms
+  const overallDeadline = Date.now() + 6500;
+
   for (const modelName of models) {
+    const remainingTime = overallDeadline - Date.now();
+    if (remainingTime < 800) {
+      console.warn(`[${providerLabel}] ⏱️ Đã tiệm cận ngân sách thời gian quét (<800ms còn lại). Kích hoạt Động cơ Giám định Heuristic để đảm bảo SLA < 8s.`);
+      break;
+    }
+    const stepTimeout = Math.min(timeoutMs, remainingTime);
     const startTime = Date.now();
     try {
-      console.log(`[${providerLabel}] 🚀 Đang gửi yêu cầu tới model: ${modelName}...`);
+      console.log(`[${providerLabel}] 🚀 Đang gửi yêu cầu tới model: ${modelName} (timeout ${stepTimeout}ms)...`);
 
       const text = isOR
-        ? await callOpenRouter(modelName, { ...options, timeoutMs })
-        : await callGoogleGemini(modelName, { ...options, timeoutMs });
+        ? await callOpenRouter(modelName, { ...options, timeoutMs: stepTimeout })
+        : await callGoogleGemini(modelName, { ...options, timeoutMs: stepTimeout });
 
       const duration = Date.now() - startTime;
       console.log(`[${providerLabel}] ✅ Phân tích THÀNH CÔNG từ ${modelName} trong ${duration}ms!`);
@@ -249,8 +267,8 @@ async function generateAIWithFastFailover(options: {
       console.warn(`[${providerLabel}] ⚠️ Model ${modelName} gặp sự cố sau ${duration}ms: ${errorMsg}`);
       console.log(`[${providerLabel}] ⏩ Fast-failover: Lập tức chuyển sang model tiếp theo trong danh sách...`);
 
-      // Độ trễ tối thiểu 30ms để nhường CPU cho event loop
-      await new Promise(resolve => setTimeout(resolve, 30));
+      // Độ trễ tối thiểu 20ms để nhường CPU cho event loop
+      await new Promise(resolve => setTimeout(resolve, 20));
     }
   }
 
@@ -2013,13 +2031,14 @@ Return strictly valid JSON conforming to this schema without markdown formatting
 
     let parsedReport: any = null;
 
-    // Gọi Gemini AI với cơ chế Fast-Failover (< 3s, timeout 8s, chuyển model tức thì)
+    // Gọi AI với cơ chế Fast-Failover (< 2-3s, timeout 4.5s, chuyển model tức thì)
     const aiExecution = await generateGeminiWithFastFailover({
       contents: contentsPayload,
       systemInstruction: systemPrompt,
       responseMimeType: 'application/json',
       temperature: 0.2,
-      timeoutMs: IS_OPENROUTER ? 15000 : 8000,
+      timeoutMs: 4500,
+      maxTokens: 650,
     });
 
     if (aiExecution && aiExecution.text) {
@@ -2280,7 +2299,7 @@ app.post('/api/analyze', async (req, res) => {
 
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 6000); // 6s để tải trọn vẹn nội dung
+      const timer = setTimeout(() => controller.abort(), 2500); // Tối ưu tải nhanh 2.5s để bảo toàn SLA < 8s
       const response = await fetch(targetUrl, {
         signal: controller.signal,
         redirect: 'follow',
@@ -2314,7 +2333,7 @@ app.post('/api/analyze', async (req, res) => {
         .replace(/\s{2,}/g, ' ')
         .trim();
 
-      pageContent = cleanText.slice(0, 1800);
+      pageContent = cleanText.slice(0, 1000);
       isLiveFetchSuccess = pageContent.length > 50;
     } catch (fetchErr: any) {
       pageContent = `[Lưu ý: Không thể tải trực tiếp HTML do máy chủ đích từ chối kết nối hoặc chặn bot. Lỗi: ${fetchErr?.message || 'Timeout'}]`;
@@ -2322,49 +2341,40 @@ app.post('/api/analyze', async (req, res) => {
 
     // --- Bước 2: Đưa NỘI DUNG THỰC TẾ vào Gemini AI để thẩm định ngữ nghĩa ---
     const systemPrompt = `Bạn là chuyên gia an ninh mạng, thẩm định uy tín, bảo mật và tuân thủ pháp lý website.
-Nhiệm vụ của bạn là ĐỌC KỸ TOÀN BỘ NỘI DUNG THỰC TẾ (Tiêu đề, mô tả, văn bản trang, các dịch vụ/nút bấm) được cung cấp để đánh giá toàn diện tính chất trang web.
+Nhiệm vụ của bạn là ĐỌC KỸ NỘI DUNG THỰC TẾ (Tiêu đề, mô tả, văn bản trang) được cung cấp để đánh giá tính chất trang web một cách súc tích, chính xác.
 
-QUY TẮC BẮT BUỘC VỀ NGÔN NGỮ (QUAN TRỌNG NHẤT):
-1. TOÀN BỘ nội dung trả về trong JSON (summary, age_rating.label, age_rating.reason, certificates, usage_notes, red_flags, recommendations, ai_disclaimer) BẮT BUỘC 100% PHẢI LÀ TIẾNG VIỆT CHUẨN XÁC, TỰ NHIÊN, DỄ HIỂU.
-2. Dù website được phân tích có nội dung gốc bằng tiếng Anh hay bất kỳ tiếng nước ngoài nào, bạn PHẢI dịch thuật, tóm tắt và đánh giá hoàn toàn bằng TIẾNG VIỆT. TUYỆT ĐỐI KHÔNG DÙNG TIẾNG ANH trong các nội dung giải thích.
+QUY TẮC BẮT BUỘC VỀ NGÔN NGỮ:
+1. TOÀN BỘ nội dung trả về trong JSON BẮT BUỘC 100% PHẢI LÀ TIẾNG VIỆT CHUẨN XÁC, NGẮN GỌN, DỄ HIỂU.
+2. Dù website có nội dung gốc bằng tiếng Anh hay bất kỳ tiếng nước ngoài nào, bạn PHẢI dịch và tóm tắt hoàn toàn bằng TIẾNG VIỆT.
 
 QUY TẮC THẨM ĐỊNH:
-1. NẾU NỘI DUNG THỰC TẾ LÀ CỜ BẠC / CÁ CƯỢC / CASINO / GAME BÀI:
-   - Dấu hiệu: Cung cấp trò chơi cá cược bóng đá, casino trực tuyến, baccarat, tài xỉu, nổ hũ, game bài đổi thưởng tiền thật, nạp rút thẻ cào/ngân hàng để đánh bạc...
-   - Theo pháp luật Việt Nam (Điều 321, 322 Bộ luật Hình sự & Điều 8 Luật An ninh mạng 2018): Các hoạt động này là BẤT HỢP PHÁP VÀ BỊ CẤM HOÀN TOÀN.
-   - BẮT BUỘC: gán trust_score từ 5 đến 15, status là "Dangerous". age_rating.label là "Cấm dưới 18 tuổi / Bất hợp pháp".
-
+1. NẾU NỘI DUNG LÀ CỜ BẠC / CÁ CƯỢC / CASINO / GAME BÀI (vi phạm Đ.321, 322 BLHS & Đ.8 Luật An ninh mạng):
+   - BẮT BUỘC: gán trust_score từ 5 đến 15, status "Dangerous", age_rating.label "Cấm dưới 18 tuổi / Bất hợp pháp".
 2. NẾU NỘI DUNG LÀ LỪA ĐẢO / GIẢ MẠO / THU THẬP THÔNG TIN (PHISHING):
-   - Dấu hiệu: Bắt người dùng nhập OTP, thông tin thẻ tín dụng, tạo giao diện mạo danh thương hiệu, thông báo trúng thưởng ảo.
-   - BẮT BUỘC: gán trust_score dưới 20, status là "Dangerous".
-
+   - BẮT BUỘC: gán trust_score dưới 20, status "Dangerous".
 3. NẾU NỘI DUNG LÀ WEBSITE THƯƠNG MẠI / DOANH NGHIỆP / CÔNG CỤ / DỊCH VỤ CÔNG HỢP PHÁP:
-   - Có thông tin định danh chủ thể, chính sách sản phẩm rõ ràng: gán trust_score từ 75 đến 95, status "Safe". Đánh giá độ tuổi phù hợp (ví dụ "Mọi lứa tuổi (3+)" hoặc "13+ (Thanh thiếu niên)").
+   - Có định danh chủ thể, chính sách rõ ràng: gán trust_score 75 đến 95, status "Safe".
 
-Hãy trả về DUY NHẤT một JSON hợp lệ theo đúng cấu trúc sau (không bọc trong markdown):
+Hãy trả về DUY NHẤT một JSON hợp lệ (ngắn gọn, súc tích, không markdown):
 {
   "trust_score": <số nguyên 0-100>,
   "status": <"Safe" | "Warning" | "Dangerous">,
-  "summary": <"Tóm tắt 2-3 câu hoàn toàn bằng Tiếng Việt dựa trên NỘI DUNG THỰC TẾ đọc được từ trang web">,
+  "summary": <"Tóm tắt 1-2 câu tiếng Việt súc tích">,
   "age_rating": {
     "label": <"Mọi lứa tuổi (3+)" | "Thanh thiếu niên (13+)" | "Người trưởng thành (18+)" | "Cấm dưới 18 tuổi / Bất hợp pháp">,
-    "reason": <"Giải thích ngắn 1-2 câu hoàn toàn bằng Tiếng Việt về lý do xếp hạng độ tuổi">
+    "reason": <"Lý do ngắn gọn 1 câu tiếng Việt">
   },
   "certificates": [
     {
-      "name": <"Tên chứng chỉ bằng Tiếng Việt, ví dụ: TLS/HTTPS Mã hóa dữ liệu, Đăng ký Bộ Công Thương, Tín nhiệm mạng NCSC, v.v.">,
+      "name": <"Tên chứng chỉ tiếng Việt">,
       "status": <"Verified" | "Not Detected" | "Warning">,
-      "details": <"Chi tiết ngắn gọn về tình trạng chứng nhận bằng Tiếng Việt">
+      "details": <"Chi tiết ngắn gọn tiếng Việt">
     }
   ],
-  "usage_notes": [
-    <"Lưu ý an toàn thực tế 1 khi sử dụng/giao dịch trên website bằng Tiếng Việt">,
-    <"Lưu ý 2">,
-    <"Lưu ý 3">
-  ],
-  "red_flags": [<"Bằng chứng nội dung đáng ngờ bằng Tiếng Việt">],
-  "recommendations": [<"Lời khuyên hành động bằng Tiếng Việt">],
-  "ai_disclaimer": "Mô hình AI hỗ trợ thẩm định dựa trên dữ liệu ngữ nghĩa và kỹ thuật tại thời điểm quét. AI đôi khi có thể có sai sót hoặc chưa bao quát hết mọi biến động; người dùng nên kết hợp kiểm tra thực tế trước các quyết định quan trọng."
+  "usage_notes": [<"Lưu ý an toàn 1">, <"Lưu ý 2">],
+  "red_flags": [<"Dấu hiệu đáng ngờ nếu có">],
+  "recommendations": [<"Lời khuyên ngắn gọn">],
+  "ai_disclaimer": "Mô hình AI hỗ trợ thẩm định tự động theo thời gian thực."
 }`;
 
     const userPrompt = `URL kiểm tra: ${targetUrl}
@@ -2373,18 +2383,19 @@ MÔ TẢ TRANG (META DESCRIPTION): ${pageDescription || 'Không có'}
 NỘI DUNG VĂN BẢN ĐỌC ĐƯỢC TỪ TRANG WEB:
 ${pageContent}
 
-YÊU CẦU ĐẶC BIỆT: Phải viết toàn bộ kết quả thẩm định bằng TIẾNG VIỆT 100%.`;
+YÊU CẦU ĐẶC BIỆT: Phải viết toàn bộ kết quả thẩm định bằng TIẾNG VIỆT 100%, ngắn gọn và chuẩn xác.`;
 
     console.log(`[Audit Engine] Bắt đầu thẩm định cho URL: ${targetUrl}`);
     console.log(`[Audit Engine] Tiêu đề cào được: "${pageTitle || 'N/A'}" (${pageContent.length} ký tự văn bản)`);
 
-    // Gọi Gemini AI với cơ chế Fast-Failover (< 3s, timeout 8s, chuyển model tức thì)
+    // Gọi AI với cơ chế Fast-Failover (< 2-3s, timeout 4.5s, giới hạn ngân sách SLA < 8s)
     const aiExecution = await generateGeminiWithFastFailover({
       contents: userPrompt,
       systemInstruction: systemPrompt,
       responseMimeType: 'application/json',
-      temperature: 0.2,
-      timeoutMs: IS_OPENROUTER ? 15000 : 8000,
+      temperature: 0.15,
+      timeoutMs: 4500,
+      maxTokens: 650,
     });
 
     let result: any = null;
