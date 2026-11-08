@@ -347,6 +347,53 @@ function putInCache(fingerprint: string, data: any) {
 const TRANSLATION_CACHE = new Map<string, string>();
 
 /**
+ * Trích xuất và phân tích JSON an toàn tuyệt đối từ phản hồi của LLM.
+ * Tự động loại bỏ markdown block, regex fallback, và dọn dẹp dấu phẩy thừa (trailing commas).
+ * Tuyệt đối không ném lỗi làm sập server hay trả mã lỗi 500.
+ */
+function parseJsonSafely(rawText: string): any {
+  if (!rawText || typeof rawText !== 'string') return null;
+
+  // 1. Thử parse trực tiếp
+  try {
+    return JSON.parse(rawText);
+  } catch {}
+
+  // 2. Loại bỏ markdown code block ```json ... ```
+  const cleaned = rawText.replace(/```json\n?|```/g, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {}
+
+  // 3. Dùng regex trích xuất khối đối tượng { ... }
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (match) {
+    const candidate = match[0];
+    try {
+      return JSON.parse(candidate);
+    } catch {}
+
+    // 4. Khắc phục lỗi dấu phẩy thừa trước dấu đóng ngoặc (trailing commas)
+    try {
+      const fixed = candidate
+        .replace(/,\s*([}\]])/g, '$1')
+        .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
+      return JSON.parse(fixed);
+    } catch {}
+  }
+
+  // 5. Thử trích xuất mảng [ ... ] nếu là array
+  const arrMatch = cleaned.match(/\[[\s\S]*\]/);
+  if (arrMatch) {
+    try {
+      return JSON.parse(arrMatch[0]);
+    } catch {}
+  }
+
+  return null;
+}
+
+/**
  * Kiểm tra xem đoạn văn bản có phải là Tiếng Anh hay không.
  * Nếu có dấu tiếng Việt -> Chắc chắn là Tiếng Việt (trả về false).
  * Nếu không có dấu tiếng Việt và chứa các từ tiếng Anh phổ biến -> Trả về true.
@@ -527,8 +574,6 @@ async function probeTLS(hostname: string, port = 443, timeoutMs = 350): Promise<
     } catch (connectErr: any) {
       onTimeoutOrError(connectErr?.message || 'TLS Connect Failed');
     }
-  });
-}
   });
 }
 
@@ -2078,13 +2123,7 @@ Return strictly valid JSON conforming to this schema without markdown formatting
     });
 
     if (aiExecution && aiExecution.text) {
-      const responseText = aiExecution.text || '{}';
-      try {
-        parsedReport = JSON.parse(responseText);
-      } catch {
-        const cleaned = responseText.replace(/```json\n?|```/g, '').trim();
-        parsedReport = JSON.parse(cleaned);
-      }
+      parsedReport = parseJsonSafely(aiExecution.text);
       if (parsedReport) {
         parsedReport.analysis_engine = aiExecution.provider === 'openrouter'
           ? `OpenRouter AI (${aiExecution.modelName})`
@@ -2442,12 +2481,8 @@ YÊU CẦU ĐẶC BIỆT: Phải viết toàn bộ kết quả thẩm định b�
       const engineLabel = aiExecution.provider === 'openrouter'
         ? `OpenRouter AI (${successfulModel})`
         : `Google Gemini AI (${successfulModel})`;
-      try {
-        result = JSON.parse(aiExecution.text);
-        result.analysis_engine = engineLabel;
-      } catch {
-        const cleaned = aiExecution.text.replace(/```json\n?|```/g, '').trim();
-        result = JSON.parse(cleaned);
+      result = parseJsonSafely(aiExecution.text);
+      if (result) {
         result.analysis_engine = engineLabel;
       }
 
@@ -2465,9 +2500,11 @@ ${JSON.stringify(result)}`;
             timeoutMs: 5000,
           });
           if (transRes?.text) {
-            const transParsed = JSON.parse(transRes.text.replace(/```json\n?|```/g, '').trim());
-            transParsed.analysis_engine = engineLabel;
-            result = transParsed;
+            const transParsed = parseJsonSafely(transRes.text);
+            if (transParsed) {
+              transParsed.analysis_engine = engineLabel;
+              result = transParsed;
+            }
           }
         } catch (transErr) {
           console.warn('Failed to translate /api/analyze result to Vietnamese:', transErr);
