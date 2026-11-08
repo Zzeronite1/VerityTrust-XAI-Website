@@ -46,13 +46,13 @@ if (IS_OPENROUTER) {
 // Shared server-side Gemini client (khởi tạo khi dùng native Google Gemini)
 const ai = (!IS_OPENROUTER && RAW_API_KEY)
   ? new GoogleGenAI({
-      apiKey: RAW_API_KEY,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
+    apiKey: RAW_API_KEY,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
       },
-    })
+    },
+  })
   : null;
 
 /**
@@ -79,8 +79,6 @@ const OPENROUTER_MODELS_CASCADE: string[] = [
   'openrouter/free',
   'nvidia/nemotron-3.5-super-vl:free',
   'nvidia/nemotron-3.5-lightning:free',
-  'google/gemini-2.0-flash-001',
-  'google/gemini-flash-1.5',
 ];
 
 const GOOGLE_GEMINI_MODELS_CASCADE: string[] = [
@@ -640,7 +638,8 @@ const PROHIBITED_GAMBLING_BETTING_DOMAINS = new Set([
   'mu9.com', 'mu9', 'ta88.com', 'ta88', 'sky88.com', 'sky88',
   'bong88.com', 'bong88', 'viva88.net', 'viva88.com', 'viva88',
   'sbobet.com', 'sbobet', 'ibet888.com', 'ibet888',
-  'sclub88.com', 'bet365.com'
+  'sclub88.com', 'bet365.com',
+  'bet88.com', 'bet88', 'bet88.casino', 'bet88vn.com', 'bet88link.com'
 ]);
 
 // Helper kiểm tra mục tiêu có dấu hiệu cờ bạc/cá độ hay không
@@ -668,7 +667,7 @@ function isGamblingTarget(targetUrl: string, hostname: string, pageContent: stri
 }
 
 // Regex pattern to detect illegal gambling subdomains, mirror domains, or keywords
-const ILLEGAL_GAMBLING_REGEX = /(?:^|\.)(?:m88|w88|188bet|fun88|kubet|kucasino|ku11|ku777|ku888|ku999|thabet|bk8|fb88|12bet|dafabet|b52club|sunwin|go88|rikvip|iwin|789club|yo88|fa88|manclub|sodo66|oxbet|may88|sin88|red88|five88|lucky88|zbet|fabet|debet|dabet|sv388|s128|loto188|v9bet|happyluke|vn88|jbo|mu9|ta88|sky88|bong88|viva88|sbobet|ibet888)(?:[-._]|$)/i;
+const ILLEGAL_GAMBLING_REGEX = /(?:^|\.)(?:bet88|m88|w88|188bet|fun88|kubet|kucasino|ku11|ku777|ku888|ku999|thabet|bk8|fb88|12bet|dafabet|b52club|sunwin|go88|rikvip|iwin|789club|yo88|fa88|manclub|sodo66|oxbet|may88|sin88|red88|five88|lucky88|zbet|fabet|debet|dabet|sv388|s128|loto188|v9bet|happyluke|vn88|jbo|mu9|ta88|sky88|bong88|viva88|sbobet|ibet888)(?:[-._]|$)/i;
 
 // Unlicensed gambling activity keywords in host or path
 const GAMBLING_SUSPICIOUS_REGEX = /(?:keo-?nha-?cai|ty-?le-?keo|ca-?cuoc|danh-?bai|game-?bai|quay-?hu|tai-?xiu|xoc-?dia|so-?de|lo-?de|ban-?ca-?doi-?thuong|nohu\d*|baccarat|slot777|poker88|soi-?cau)/i;
@@ -1260,6 +1259,8 @@ function runSimplifiedVerificationModel(params: HeuristicParams): any {
     PROHIBITED_GAMBLING_BETTING_DOMAINS.has(hostname) ||
     Array.from(PROHIBITED_GAMBLING_BETTING_DOMAINS).some(d => hostname === d || hostname.endsWith('.' + d)) ||
     ILLEGAL_GAMBLING_REGEX.test(hostname) ||
+    UNIVERSAL_GAMBLING_REGEX.test(hostname) ||
+    GAMBLING_TLDS.some(tld => hostname.endsWith(tld)) ||
     (GAMBLING_SUSPICIOUS_REGEX.test(hostname) && !isKnownSafeDomain)
   );
 
@@ -2063,7 +2064,9 @@ Return strictly valid JSON conforming to this schema without markdown formatting
     const isIllegalGambling = checkHost && (
       PROHIBITED_GAMBLING_BETTING_DOMAINS.has(checkHost) ||
       Array.from(PROHIBITED_GAMBLING_BETTING_DOMAINS).some(d => checkHost === d || checkHost.endsWith('.' + d)) ||
-      ILLEGAL_GAMBLING_REGEX.test(checkHost)
+      ILLEGAL_GAMBLING_REGEX.test(checkHost) ||
+      UNIVERSAL_GAMBLING_REGEX.test(checkHost) ||
+      GAMBLING_TLDS.some(tld => checkHost.endsWith(tld))
     );
 
     if (isIllegalGambling && parsedReport.trustScore > 20) {
