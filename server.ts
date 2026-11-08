@@ -86,10 +86,12 @@ const ai = (!IS_OPENROUTER && RAW_API_KEY)
  *    - gemini-1.5-pro: Model dự phòng 3 (chất lượng phân tích chuyên sâu)
  */
 const OPENROUTER_MODELS_CASCADE: string[] = [
-  'cohere/north-mini-code:free',        // Quán quân tốc độ (~500ms - 800ms), chuyên gia phân tích web/mã nguồn, ổn định nhất
-  'nvidia/nemotron-3.5-super-vl:free',  // NVIDIA Multimodal Model (~550ms), khả năng suy luận và ngữ cảnh xuất sắc
-  'nvidia/nemotron-3.5-lightning:free', // NVIDIA Lightning (~650ms), phản hồi tức thì
-  'openrouter/free',                    // Smart Router tự động định tuyến (1s - 2s)
+  'liquid/lfm-2.5-2.6b:free',
+  'openrouter/free',
+  'nvidia/nemotron-3.5-super-vl:free',
+  'nvidia/nemotron-3.5-lightning:free',
+  'google/gemini-2.0-flash-001',
+  'google/gemini-flash-1.5',
 ];
 
 const GOOGLE_GEMINI_MODELS_CASCADE: string[] = [
@@ -139,20 +141,14 @@ async function callOpenRouter(modelName: string, options: {
     model: modelName,
     messages,
     temperature: options.temperature ?? 0.2,
-    max_tokens: options.maxTokens ?? 650,
   };
-
-  // Chỉ gắn reasoning effort 'none' cho các model hỗ trợ tắt suy luận ngầm (tránh HTTP 400)
-  if (!modelName.includes('liquid') && !modelName.includes('flint')) {
-    payload.reasoning = { effort: 'none' };
-  }
 
   if (options.responseMimeType === 'application/json') {
     payload.response_format = { type: 'json_object' };
   }
 
   const controller = new AbortController();
-  const timeoutMs = options.timeoutMs ?? (IS_OPENROUTER ? 4500 : 5000);
+  const timeoutMs = options.timeoutMs ?? (IS_OPENROUTER ? 15000 : 8000);
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
@@ -250,26 +246,17 @@ async function generateAIWithFastFailover(options: {
   const isOR = IS_OPENROUTER;
   const defaultModels = isOR ? OPENROUTER_MODELS_CASCADE : GOOGLE_GEMINI_MODELS_CASCADE;
   const models = options.models || defaultModels;
-  const timeoutMs = options.timeoutMs ?? (isOR ? 4500 : 5000);
+  const timeoutMs = options.timeoutMs ?? (isOR ? 15000 : 8000);
   const providerLabel = isOR ? 'OpenRouter AI' : 'Google Gemini AI';
 
-  // Tổng thời gian tối đa cho toàn bộ chu trình AI không bao giờ vượt quá 6500ms
-  const overallDeadline = Date.now() + 6500;
-
   for (const modelName of models) {
-    const remainingTime = overallDeadline - Date.now();
-    if (remainingTime < 800) {
-      console.warn(`[${providerLabel}] ⏱️ Đã tiệm cận ngân sách thời gian quét (<800ms còn lại). Kích hoạt Động cơ Giám định Heuristic để đảm bảo SLA < 8s.`);
-      break;
-    }
-    const stepTimeout = Math.min(timeoutMs, remainingTime);
     const startTime = Date.now();
     try {
-      console.log(`[${providerLabel}] 🚀 Đang gửi yêu cầu tới model: ${modelName} (timeout ${stepTimeout}ms)...`);
+      console.log(`[${providerLabel}] 🚀 Đang gửi yêu cầu tới model: ${modelName}...`);
 
       const text = isOR
-        ? await callOpenRouter(modelName, { ...options, timeoutMs: stepTimeout })
-        : await callGoogleGemini(modelName, { ...options, timeoutMs: stepTimeout });
+        ? await callOpenRouter(modelName, { ...options, timeoutMs })
+        : await callGoogleGemini(modelName, { ...options, timeoutMs });
 
       const duration = Date.now() - startTime;
       console.log(`[${providerLabel}] ✅ Phân tích THÀNH CÔNG từ ${modelName} trong ${duration}ms!`);
@@ -2112,14 +2099,13 @@ Return strictly valid JSON conforming to this schema without markdown formatting
 
     let parsedReport: any = null;
 
-    // Gọi AI với cơ chế Fast-Failover (< 2-3s, timeout 4.5s, chuyển model tức thì)
+    // Gọi AI với cơ chế Fast-Failover
     const aiExecution = await generateGeminiWithFastFailover({
       contents: contentsPayload,
       systemInstruction: systemPrompt,
       responseMimeType: 'application/json',
       temperature: 0.2,
-      timeoutMs: 4500,
-      maxTokens: 650,
+      timeoutMs: IS_OPENROUTER ? 15000 : 8000,
     });
 
     if (aiExecution && aiExecution.text) {
@@ -2463,14 +2449,13 @@ YÊU CẦU ĐẶC BIỆT: Phải viết toàn bộ kết quả thẩm định b�
     console.log(`[Audit Engine] Bắt đầu thẩm định cho URL: ${targetUrl}`);
     console.log(`[Audit Engine] Tiêu đề cào được: "${pageTitle || 'N/A'}" (${pageContent.length} ký tự văn bản)`);
 
-    // Gọi AI với cơ chế Fast-Failover (< 2-3s, timeout 4.5s, giới hạn ngân sách SLA < 8s)
+    // Gọi AI với cơ chế Fast-Failover
     const aiExecution = await generateGeminiWithFastFailover({
       contents: userPrompt,
       systemInstruction: systemPrompt,
       responseMimeType: 'application/json',
       temperature: 0.15,
-      timeoutMs: 4500,
-      maxTokens: 650,
+      timeoutMs: IS_OPENROUTER ? 15000 : 8000,
     });
 
     let result: any = null;
