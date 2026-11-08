@@ -73,7 +73,7 @@ flowchart LR
     T1 --> T2["Tầng 2<br/>Đọc trang + TLS + tuổi tên miền<br/>+ 2 mô hình học sâu"]
     T2 -->|điểm dưới 45 hoặc từ 75| R([Kết luận])
     T2 -->|trang rỗng/SPA, vùng xám| T3["Tầng 3<br/>Dựng trang bằng Chrome"]
-    T3 --> T4["Tầng 4<br/>Trọng tài OpenJev<br/>(tuỳ chọn)"]
+    T3 --> T4["Tầng 4<br/>Trọng tài Jev / OpenJev<br/>(tuỳ chọn)"]
     T4 --> R
     R -.->|người dùng bấm| T5["Tầng 5<br/>AI viết lời giải thích"]
 ```
@@ -117,6 +117,17 @@ Không có API key thì Verity vẫn chấm điểm đầy đủ; chỉ phần "
 GEMINI_API_KEY="khoá-lấy-tại-aistudio.google.com"
 # hoặc OPENROUTER_API_KEY="sk-or-..."
 ```
+
+### Tuỳ chọn: bật trọng tài Jev cho ca vùng xám
+
+[Jev](https://docs.typesafe.ai/introduction) của TypeSafe AI trả lời các câu hỏi có/không kèm xác suất đã hiệu chỉnh. Verity chỉ hỏi Jev với những trang có điểm lưng chừng (45–74). Lấy API key tại [console.typesafe.ai](https://console.typesafe.ai/keys), rồi thêm vào `.env`:
+
+```env
+JEV_MODE="api"
+JEV_API_KEY="khoá-typesafe"
+```
+
+Muốn tự host, đặt `JEV_MODE="openjev"` và `OPENJEV_ENDPOINT` trỏ tới một máy chủ tương thích Jev. Chi tiết: [docs/KIEN-TRUC.md](docs/KIEN-TRUC.md#tầng-4--trọng-tài-jev--openjev-tuỳ-chọn).
 
 Toàn bộ biến cấu hình (tắt/bật từng nguồn dữ liệu, trình duyệt headless, trọng tài Jev…) được mô tả trong [`.env.example`](.env.example).
 

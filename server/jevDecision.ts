@@ -30,6 +30,7 @@ export interface JevDecisionResult {
 
 export interface JevConfig {
   mode: JevMode;
+  model: string;
   apiUrl: string;
   apiKey: string;
   openJevEndpoint: string;
@@ -43,12 +44,14 @@ export function getJevConfig(): JevConfig {
   const mode: JevMode = rawMode === 'api' || rawMode === 'openjev' ? rawMode : 'off';
   return {
     mode,
-    apiUrl: process.env.JEV_API_URL || 'https://api.typesafe.ai/v1/decision',
-    apiKey: process.env.JEV_API_KEY || '',
-    openJevEndpoint: process.env.OPENJEV_ENDPOINT || 'http://localhost:8080/v1/decide',
+    model: process.env.JEV_MODEL || 'jev-latest',
+    apiUrl: process.env.JEV_API_URL || 'https://api.typesafe.ai/v1/systemone',
+    apiKey: process.env.JEV_API_KEY || process.env.TYPESAFE_API_KEY || '',
+    // Các bản OpenJev tự host đều mô phỏng cùng endpoint System One của Jev
+    openJevEndpoint: process.env.OPENJEV_ENDPOINT || 'http://localhost:8080/v1/systemone',
     openJevApiKey: process.env.OPENJEV_API_KEY || '',
     grayZoneOnly: process.env.JEV_GRAY_ZONE_ONLY !== 'false', // Mặc định chỉ gọi cho ca vùng xám 45-74 điểm
-    timeoutMs: parseInt(process.env.JEV_TIMEOUT_MS || '3000', 10),
+    timeoutMs: parseInt(process.env.JEV_TIMEOUT_MS || '5000', 10),
   };
 }
 
@@ -58,6 +61,7 @@ export function getJevConfig(): JevConfig {
 export function buildJevState(e: SiteEvidence, a: RiskAssessment) {
   const html = e.html;
   return {
+    url: e.finalUrl || e.url,
     domain: e.domain.host,
     domain_suffix: e.domain.publicSuffix,
     domain_age_days: e.domainAge?.ageDays ?? null,
@@ -79,34 +83,49 @@ export function buildJevState(e: SiteEvidence, a: RiskAssessment) {
 }
 
 /**
- * Định nghĩa bộ câu hỏi tiêu chuẩn (Typed Questions Schema)
+ * Bộ câu hỏi gửi cho Jev theo chuẩn System One (https://docs.typesafe.ai/primitives):
+ * Noul = xác suất câu trả lời là "có" (0-1); Choice = chọn một nhãn kèm xác suất từng nhãn.
+ * Mã câu hỏi (khoá) không được gửi cho mô hình, chỉ dùng để ghép câu trả lời.
  */
-export const STANDARD_JEV_QUESTIONS = [
-  {
-    id: 'is_credential_harvesting',
+export const STANDARD_JEV_QUESTIONS = {
+  is_credential_harvesting: {
     type: 'noul',
-    premise: 'Trang web này có hành vi thu thập trái phép thông tin xác thực nhạy cảm (mật khẩu, OTP SMS, số thẻ ngân hàng, cụm từ khôi phục ví bí mật) không?'
+    instructions: 'Does this web page try to collect login credentials or secrets (passwords, SMS OTP codes, bank card numbers, crypto wallet recovery phrases) for an account that does not belong to the site owner?',
+    criteria: {
+      true: 'Asks visitors to enter passwords, OTPs, card details or a seed phrase for a bank, wallet, email or social account it does not operate',
+      false: 'No such form, or a normal login for the site\'s own service',
+    },
   },
-  {
-    id: 'is_financial_or_gambling_scam',
+  is_financial_or_gambling_scam: {
     type: 'noul',
-    premise: 'Trang web này có dấu hiệu tổ chức cờ bạc cá cược, lừa đảo đầu tư tài chính sinh lời cao, làm nhiệm vụ ảo đa cấp Ponzi không?'
+    instructions: 'Is this web page online gambling or betting, or a financial scam (unrealistic investment returns, paid "tasks", Ponzi or pyramid schemes, fake loans, fake shops)?',
   },
-  {
-    id: 'is_brand_impersonation',
+  is_brand_impersonation: {
     type: 'noul',
-    premise: 'Trang web này có mạo danh thương hiệu, ngân hàng, sàn thương mại điện tử hoặc cổng dịch vụ công của nhà nước không?'
+    instructions: 'Does this web page pretend to be a bank, well-known brand, e-commerce marketplace or government service that does not own this domain?',
+    criteria: {
+      true: 'Uses another organisation\'s name, logo or login page on a domain that organisation does not own',
+      false: 'The brand is the site\'s own, or is only mentioned (resellers, social login buttons, news, app-store links)',
+    },
   },
-  {
-    id: 'final_verdict',
+  final_verdict: {
     type: 'choice',
-    options: ['safe', 'suspicious', 'phishing', 'gambling', 'malicious']
-  }
-];
+    instructions: 'What is this web page?',
+    criteria: {
+      safe: 'A legitimate website',
+      suspicious: 'Unclear or low-quality, but no clear sign of fraud',
+      phishing: 'Steals credentials or impersonates another organisation',
+      gambling: 'Online casino, betting or lottery',
+      malicious: 'Other fraud or malware: fake shop, investment scam, fake download',
+    },
+  },
+} as const;
 
 /**
  * Gửi yêu cầu phân xử tới Jev Cloud API hoặc OpenJev Local/Worker Endpoint
  */
+let warnedMissingKey = false;
+
 export async function queryJevDecision(e: SiteEvidence, a: RiskAssessment): Promise<JevDecisionResult | null> {
   const cfg = getJevConfig();
   if (cfg.mode === 'off') return null;
@@ -126,7 +145,15 @@ export async function queryJevDecision(e: SiteEvidence, a: RiskAssessment): Prom
     headers['Authorization'] = `Bearer ${cfg.openJevApiKey}`;
   }
 
+  if (cfg.mode === 'api' && !cfg.apiKey) {
+    if (!warnedMissingKey) console.warn('[Jev Gateway] JEV_MODE=api nhưng chưa có JEV_API_KEY (hoặc TYPESAFE_API_KEY) - bỏ qua Tầng 4.');
+    warnedMissingKey = true;
+    return null;
+  }
+
+  // Chuẩn System One: POST /v1/systemone { model, state, questions } -> { model, answers, usage }
   const payload = {
+    model: cfg.model,
     state: buildJevState(e, a),
     questions: STANDARD_JEV_QUESTIONS,
   };
@@ -145,21 +172,23 @@ export async function queryJevDecision(e: SiteEvidence, a: RiskAssessment): Prom
     clearTimeout(timer);
 
     if (!res.ok) {
-      console.warn(`[Jev Gateway] ${cfg.mode} trả về lỗi HTTP ${res.status}: ${res.statusText}`);
+      const body = await res.text().catch(() => '');
+      console.warn(`[Jev Gateway] ${cfg.mode} trả về lỗi HTTP ${res.status}: ${body.slice(0, 200) || res.statusText}`);
       return null;
     }
 
     const data: any = await res.json();
     const latencyMs = Date.now() - t0;
 
-    // Chuẩn hóa kết quả đầu ra (Hỗ trợ định dạng của cả Jev API lẫn OpenJev Qwen/DeBERTa)
-    const decisions = data.decisions || data;
+    // Câu trả lời nằm trong data.answers theo đúng khoá câu hỏi (giữ tương thích định dạng cũ data.decisions)
+    const decisions = data.answers || data.decisions || data;
     const cred = decisions.is_credential_harvesting;
     const fin = decisions.is_financial_or_gambling_scam;
     const brand = decisions.is_brand_impersonation;
     const verdictData = decisions.final_verdict;
 
     const parseNoul = (n: any) => {
+      if (typeof n?.noul === 'number') return { val: n.noul >= 0.5, conf: n.noul };
       if (typeof n === 'boolean') return { val: n, conf: 1 };
       if (typeof n === 'number') return { val: n >= 0.5, conf: n };
       return {
@@ -183,7 +212,7 @@ export async function queryJevDecision(e: SiteEvidence, a: RiskAssessment): Prom
       probs = verdictData.probabilities || {};
     }
 
-    console.log(`[Jev Gateway] 🎯 Phân xử (${cfg.mode}) hoàn tất trong ${latencyMs}ms: ${finalChoice} (Cred: ${(cRes.conf * 100).toFixed(0)}%, Brand: ${(bRes.conf * 100).toFixed(0)}%, Fin: ${(fRes.conf * 100).toFixed(0)}%)`);
+    console.log(`[Jev Gateway] 🎯 Phân xử (${cfg.mode}${data.model ? `, ${data.model}` : ''}) hoàn tất trong ${latencyMs}ms: ${finalChoice} (Cred: ${(cRes.conf * 100).toFixed(0)}%, Brand: ${(bRes.conf * 100).toFixed(0)}%, Fin: ${(fRes.conf * 100).toFixed(0)}%)`);
 
     return {
       engine: cfg.mode === 'api' ? 'jev-api' : 'openjev',

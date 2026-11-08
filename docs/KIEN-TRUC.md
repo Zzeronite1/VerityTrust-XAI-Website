@@ -29,7 +29,7 @@ flowchart TD
     T2 -->|điểm dưới 45 hoặc từ 75| OUT([Kết luận])
     T2 -->|HTML rỗng / SPA và điểm 45–74| T3[Tầng 3 — Chrome headless dựng trang, chấm lại]
     T2 -->|điểm 45–74| T4
-    T3 --> T4[Tầng 4 — Trọng tài OpenJev · tuỳ chọn]
+    T3 --> T4[Tầng 4 — Trọng tài Jev / OpenJev · tuỳ chọn]
     T4 --> OUT
     OUT -. người dùng bấm .-> T5[Tầng 5 — LLM viết lời giải thích]
 ```
@@ -90,11 +90,40 @@ Mã: [`server/headless.ts`](../server/headless.ts). Cấu hình: `HEADLESS_RENDE
 
 ## Tầng 4 — Trọng tài Jev / OpenJev (tuỳ chọn)
 
-**Mục đích:** với ca vùng xám 45–74 điểm, hỏi thêm một hệ thống ra quyết định bên ngoài.
+**Mục đích:** với ca vùng xám 45–74 điểm, hỏi thêm một mô hình ra quyết định bên ngoài.
 
-- Mặc định **tắt** (`JEV_MODE=off`).
-- `JEV_MODE=api` dùng dịch vụ đám mây, `JEV_MODE=openjev` dùng bản tự host.
-- Chỉ được điều chỉnh điểm trong giới hạn, không lật ngược các bằng chứng nghiêm trọng.
+[Jev](https://docs.typesafe.ai/introduction) của TypeSafe AI là mô hình "System One": nhận một *state* và các câu hỏi có kiểu, rồi trả về **xác suất đã hiệu chỉnh** thay vì văn bản tự do. Verity gửi:
+
+- **state:** URL, tên miền, tuổi tên miền, thứ hạng Tranco, TLS, có ô mật khẩu/OTP hay không, form gửi ra ngoài, thương hiệu được nhắc tới, điểm bằng chứng hiện tại, tiêu đề và 3.000 ký tự đầu của trang.
+- **4 câu hỏi:**
+
+| Mã câu hỏi | Kiểu | Hỏi gì |
+|---|---|---|
+| `is_credential_harvesting` | Noul (có/không) | Trang có thu thập mật khẩu, OTP, số thẻ, cụm từ khôi phục ví của dịch vụ khác không? |
+| `is_financial_or_gambling_scam` | Noul | Có phải cờ bạc, hoặc lừa đảo tài chính (đầu tư, việc ảo, đa cấp, shop giả)? |
+| `is_brand_impersonation` | Noul | Có giả danh ngân hàng, thương hiệu, sàn TMĐT, cơ quan nhà nước không? |
+| `final_verdict` | Choice | `safe` / `suspicious` / `phishing` / `gambling` / `malicious` |
+
+**Cách áp dụng câu trả lời** — mỗi kết luận được ghi thành một bằng chứng có giải thích, như mọi bằng chứng khác:
+
+| Câu trả lời | Tác động |
+|---|---|
+| Thu thập thông tin xác thực, xác suất ≥ 80% | −30 điểm, trần 15 |
+| Giả danh thương hiệu ≥ 80% | −35 điểm, trần 15 |
+| Lừa đảo tài chính / cờ bạc ≥ 80% | −35 điểm, trần 15 |
+| `safe` ≥ 85% và không có dấu hiệu xấu nào ở trên | +15 điểm (tối đa 95) |
+
+**Cấu hình:**
+
+| `JEV_MODE` | Gọi tới | Cần |
+|---|---|---|
+| `off` (mặc định) | — | — |
+| `api` | `https://api.typesafe.ai/v1/systemone`, model `jev-latest` | `JEV_API_KEY` (hoặc `TYPESAFE_API_KEY`) lấy tại [console.typesafe.ai](https://console.typesafe.ai/keys) |
+| `openjev` | `OPENJEV_ENDPOINT` (mặc định `http://localhost:8080/v1/systemone`) | máy chủ tự host tương thích Jev |
+
+- Lỗi mạng, sai key hoặc quá thời gian (`JEV_TIMEOUT_MS`, mặc định 5 giây) → giữ nguyên kết luận theo bằng chứng.
+- `JEV_MODE=api` mà thiếu key → tầng này tự bỏ qua, không gửi request.
+- Tóm tắt nội dung trang chỉ được gửi tới Jev khi bạn bật tầng này.
 
 Mã: [`server/jevDecision.ts`](../server/jevDecision.ts).
 
