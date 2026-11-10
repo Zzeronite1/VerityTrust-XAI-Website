@@ -117,13 +117,13 @@ if (IS_OPENROUTER) {
 // Shared server-side Gemini client (khởi tạo khi dùng native Google Gemini)
 const ai = (!IS_OPENROUTER && RAW_API_KEY)
   ? new GoogleGenAI({
-      apiKey: RAW_API_KEY,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
+    apiKey: RAW_API_KEY,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
       },
-    })
+    },
+  })
   : null;
 
 /**
@@ -155,8 +155,8 @@ function modelsFromEnv(envValue: string | undefined, defaults: string[]): string
 const OPENROUTER_MODELS_CASCADE: string[] = modelsFromEnv(process.env.OPENROUTER_MODELS, [
   'liquid/lfm-2.5-2.6b:free',
   'openrouter/free',
-  'nvidia/nemotron-3.5-super-vl:free',
-  'nvidia/nemotron-3.5-lightning:free',
+  'recursive/flint-v1.0:free',
+  'xingchen-agi/xing4.0-29b-a4b:free',
   'google/gemini-2.5-flash-lite',
   'google/gemini-2.5-flash',
 ]);
@@ -437,7 +437,7 @@ interface ScanRequest {
 class LRUCache<V> {
   private store = new Map<string, { value: V; expiresAt: number }>();
 
-  constructor(private maxEntries: number, private ttlMs: number) {}
+  constructor(private maxEntries: number, private ttlMs: number) { }
 
   get(key: string): V | undefined {
     const item = this.store.get(key);
@@ -2619,12 +2619,12 @@ function buildScanReportFromEvidence(
   for (const factor of assessment.factors) {
     const category: 'safety' | 'transparency' | 'legality' =
       ['threat_list', 'private_dns', 'nxdomain', 'telegram_exfil', 'external_form', 'sensitive_fields', 'password_form', 'brand_impersonation', 'image_phishing', 'favicon_impersonation', 'spa_telegram_exfil', 'tls_invalid', 'no_https', 'obfuscation', 'odd_port', 'fresh_cert'].includes(factor.id) ? 'safety' :
-      ['gambling', 'unlicensed_financial'].includes(factor.id) ? 'legality' : 'transparency';
+        ['gambling', 'unlicensed_financial'].includes(factor.id) ? 'legality' : 'transparency';
 
     const severity: 'high' | 'medium' | 'low' | 'safe' =
       factor.delta <= -25 ? 'high' :
-      factor.delta <= -12 ? 'medium' :
-      factor.delta < 0 ? 'low' : 'safe';
+        factor.delta <= -12 ? 'medium' :
+          factor.delta < 0 ? 'low' : 'safe';
 
     keyFindings.push({
       title: factor.label,
