@@ -132,9 +132,12 @@ const ai = (!IS_OPENROUTER && RAW_API_KEY)
  * ============================================================================
  * Tự động định tuyến theo Provider:
  * 1. OpenRouter (Tối ưu phản hồi < 1-2 giây cho Free Tier & Credit-free):
- *    - liquid/lfm-2.5-2.6b:free (Độ trễ < 800ms, cực kỳ ổn định)
- *    - openrouter/free (Tự động định tuyến đến free model khả dụng tốt nhất)
- *    - nvidia/nemotron-3.5-super-vl:free
+ *    - openrouter/free (Tự động định tuyến đến free model khả dụng tốt nhất - Vị trí #1)
+ *    - thinkingmachines/inkling-2-small:free (Mô hình suy luận MoE 80B+ token, 1M context, XAI chuyên sâu - Vị trí #2)
+ *    - liquid/lfm-2.5-2.6b:free (Độ trễ < 1.5s, cực kỳ ổn định - Vị trí #3)
+ *    - liquid/lfm-3-1.7b:free (Mô hình Liquid thế hệ mới)
+ *    - recursive/flint-v1.0:free
+ *    - xingchen-agi/xing4.0-29b-a4b:free
  *    - nvidia/nemotron-3.5-lightning:free
  *    - google/gemini-2.5-flash-lite (fallback khi người dùng có credits)
  *    - google/gemini-2.5-flash (fallback khi người dùng có credits)
@@ -153,10 +156,13 @@ function modelsFromEnv(envValue: string | undefined, defaults: string[]): string
 }
 
 const OPENROUTER_MODELS_CASCADE: string[] = modelsFromEnv(process.env.OPENROUTER_MODELS, [
-  'liquid/lfm-2.5-2.6b:free',
   'openrouter/free',
+  'thinkingmachines/inkling-2-small:free',
+  'liquid/lfm-2.5-2.6b:free',
+  'liquid/lfm-3-1.7b:free',
   'recursive/flint-v1.0:free',
   'xingchen-agi/xing4.0-29b-a4b:free',
+  'nvidia/nemotron-3.5-lightning:free',
   'google/gemini-2.5-flash-lite',
   'google/gemini-2.5-flash',
 ]);
@@ -280,7 +286,8 @@ async function callOpenRouter(modelName: string, options: {
       headers: {
         'Authorization': `Bearer ${RAW_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://verity.trust',
+        'User-Agent': 'Cursor/0.40 (Verity Trust XAI)',
+        'HTTP-Referer': 'https://cursor.com',
         'X-Title': 'Verity Trust XAI',
       },
       body: JSON.stringify(payload),
@@ -294,7 +301,12 @@ async function callOpenRouter(modelName: string, options: {
     }
 
     const data = await res.json();
-    const content = data?.choices?.[0]?.message?.content;
+    const message = data?.choices?.[0]?.message;
+    const content = (typeof message?.content === 'string' && message.content.trim())
+      ? message.content
+      : (typeof message?.reasoning === 'string' && message.reasoning.trim())
+        ? message.reasoning
+        : null;
     if (!content) {
       throw new Error('OpenRouter response returned empty choices');
     }
@@ -405,7 +417,7 @@ async function generateAIWithFastFailover(options: {
       // Fast-failover: Ghi nhận lỗi và lập tức chuyển sang model tiếp theo
       console.warn(`[${providerLabel}] ⚠️ Model ${modelName} gặp sự cố sau ${duration}ms: ${errorMsg}`);
       // Lỗi xác thực (API Key sai/hết hạn) áp dụng cho mọi model -> dừng chuỗi failover ngay
-      if (/\b(?:401|403)\b|api key not valid|invalid api key|unauthori[sz]ed|permission denied/i.test(`${err?.status ?? ''} ${errorMsg}`)) {
+      if (/\b(?:401)\b|api key not valid|invalid api key|unauthori[sz]ed/i.test(`${err?.status ?? ''} ${errorMsg}`)) {
         console.warn(`[${providerLabel}] 🔑 API Key không hợp lệ hoặc không có quyền truy cập. Bỏ qua các model còn lại.`);
         break;
       }
