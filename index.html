@@ -528,6 +528,31 @@
               </div>
             </div>
 
+            <!-- Khối Đánh giá & Phản hồi Cộng đồng (Human-in-the-Loop Feedback) -->
+            <div id="community-feedback-section" class="p-4 rounded-2xl bg-[#070e21] border border-sky-950 text-xs space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="font-bold text-sky-300 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+                  </svg>
+                  <span>Báo cáo này có chuẩn xác không?</span>
+                </div>
+                <div id="feedback-stats-badge" class="text-[11px] text-slate-400 font-mono"></div>
+              </div>
+              <p class="text-[11px] text-slate-400">
+                Đánh giá của bạn giúp hệ thống xác thực và hoàn thiện Khiên Tri thức Cộng đồng. Mọi phản hồi đều được đối chiếu với chốt chặn kỹ thuật và chữ ký nội dung (chống gian lận).
+              </p>
+              <div class="flex items-center gap-2.5 pt-1">
+                <button id="btn-feedback-accurate" onclick="submitFeedback('accurate')" type="button" class="px-3.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 smooth-interactive cursor-pointer">
+                  <span>👍 Rất chính xác</span>
+                </button>
+                <button id="btn-feedback-false" onclick="submitFeedback('false_alarm')" type="button" class="px-3.5 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-900/60 border border-red-500/30 text-red-300 text-xs font-semibold flex items-center gap-1.5 smooth-interactive cursor-pointer">
+                  <span>👎 Báo nhầm</span>
+                </button>
+              </div>
+              <div id="feedback-toast" class="hidden p-2.5 rounded-lg bg-sky-950/70 border border-sky-400/30 text-[11px] text-sky-300"></div>
+            </div>
+
             <!-- Khối Khẳng định AI Disclaimer (Khẳng định AI đôi khi có sai sót) -->
             <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-200/90 text-xs flex items-start gap-3 leading-relaxed shadow-xs">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-400 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1222,6 +1247,21 @@
           pipelineSection.classList.add('hidden');
         }
         lastAnalyzedUrl = data.analyzed_url || '';
+        document.getElementById('feedback-toast').classList.add('hidden');
+        document.getElementById('feedback-stats-badge').textContent = '';
+        if (lastAnalyzedUrl) {
+          try {
+            const h = new URL(lastAnalyzedUrl).hostname;
+            fetch(`/api/community-stats?domain=${encodeURIComponent(h)}`)
+              .then(r => r.json())
+              .then(st => {
+                if (st && (st.accurateCount || st.falseAlarmCount)) {
+                  document.getElementById('feedback-stats-badge').textContent = `👍 ${st.accurateCount} • 👎 ${st.falseAlarmCount}`;
+                }
+              })
+              .catch(() => {});
+          } catch {}
+        }
         document.getElementById('explain-box').classList.add('hidden');
         document.getElementById('explain-btn').disabled = false;
 
@@ -1258,6 +1298,39 @@
         } finally {
           btn.textContent = 'Xem giải thích chi tiết (AI)';
           btn.disabled = false;
+        }
+      }
+
+      // ── Phản hồi Cộng đồng (HITL) ──────────────────────────────────────────
+      async function submitFeedback(type) {
+        if (!lastAnalyzedUrl) return;
+        const toast = document.getElementById('feedback-toast');
+        const btnAccurate = document.getElementById('btn-feedback-accurate');
+        const btnFalse = document.getElementById('btn-feedback-false');
+        btnAccurate.disabled = true;
+        btnFalse.disabled = true;
+        try {
+          const res = await fetch('/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: lastAnalyzedUrl,
+              feedbackType: type,
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          toast.textContent = data.message || 'Cảm ơn bạn! Đánh giá đã được ghi nhận vào Khiên Tri thức Cộng đồng.';
+          toast.classList.remove('hidden');
+          if (data.accurateCount !== undefined) {
+            document.getElementById('feedback-stats-badge').textContent = `👍 ${data.accurateCount} • 👎 ${data.falseAlarmCount}`;
+          }
+          setTimeout(() => toast.classList.add('hidden'), 5000);
+        } catch (err) {
+          toast.textContent = 'Không gửi được đánh giá đến máy chủ.';
+          toast.classList.remove('hidden');
+        } finally {
+          btnAccurate.disabled = false;
+          btnFalse.disabled = false;
         }
       }
 

@@ -13,6 +13,7 @@ import {
 import type { SiteEvidence } from './evidence.ts';
 import { getPopularityRank } from './reputation.ts';
 import { predictContentRisk } from './contentModel.ts';
+import { evaluateCommunityFeedback } from './feedbackEngine.ts';
 
 // Tổ chức trên GitHub/GitLab Pages trùng tên một website top 10.000 (mozilla.github.io <-> mozilla.org) là chính chủ
 function isPopularOrgAccount(label: string): boolean {
@@ -383,6 +384,16 @@ export function scoreEvidence(e: SiteEvidence): RiskAssessment {
       const targetFloor = (html.moitBadge || html.taxId) ? 75 : 65;
       floor = floor === null ? targetFloor : Math.max(floor, targetFloor);
       add('smb_shield', 10, 'Kích hoạt Khiên bảo hộ doanh nghiệp minh bạch', 'Website công bố đầy đủ thông tin pháp lý/MST/chính sách/liên hệ và không có dấu hiệu mạo danh thương hiệu hay đánh cắp dữ liệu.');
+    }
+  }
+
+  // ---------------------------------------------------------------- Phản hồi Cộng đồng đã kiểm chứng (HITL)
+  // Chống Data Poisoning: Tuyệt đối không áp dụng điểm thưởng nếu có dấu hiệu tội phạm/lừa đảo nguy hiểm
+  const hasHardViolation = caps.some(c => c.value <= 20);
+  if (!gambling && !hasHardViolation) {
+    const community = evaluateCommunityFeedback(d.host, e);
+    if (community.factor) {
+      add(community.factor.id, community.factor.delta, community.factor.label, community.factor.detail);
     }
   }
 

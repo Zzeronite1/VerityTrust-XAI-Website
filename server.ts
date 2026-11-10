@@ -25,6 +25,7 @@ import {
   isGamblingTarget,
   isTrustedHost,
 } from './server/domainRules.ts';
+import { recordUserFeedback, getCommunityStats } from './server/feedbackEngine.ts';
 
 dotenv.config();
 
@@ -2268,11 +2269,34 @@ Return strictly valid JSON conforming to this schema without markdown formatting
   return parsedReport;
 }
 
-// POST /api/feedback - User feedback loop for False Positive / Negative
+// POST /api/feedback - Verified Community Knowledge & Feedback Defense Engine (HITL)
 app.post('/api/feedback', (req, res) => {
-  const { scanId, feedbackType, comment, userEmail } = req.body;
-  console.log(`[Feedback Received] Scan: ${scanId}, Type: ${feedbackType}, By: ${userEmail}, Comment: ${comment}`);
-  res.json({ success: true, message: 'Phản hồi đã được ghi nhận vào hệ thống Verity XAI.' });
+  try {
+    const { url, feedbackType, comment, scanId } = req.body;
+    if (!url) {
+      return res.status(400).json({ error: 'Missing url parameter' });
+    }
+    const clientIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
+    const type = feedbackType === 'false_alarm' ? 'false_alarm' : 'accurate';
+    const result = recordUserFeedback({
+      url,
+      feedbackType: type,
+      clientIp,
+    });
+    console.log(`[Community Shield] Phản hồi ghi nhận cho ${url}: ${type} từ IP ${clientIp} -> Trạng thái: ${result.status} (accurate: ${result.accurateCount}, falseAlarm: ${result.falseAlarmCount})`);
+    return res.json(result);
+  } catch (err: any) {
+    console.error('[/api/feedback] Error:', err);
+    return res.status(500).json({ error: 'Internal feedback error', message: err.message });
+  }
+});
+
+// GET /api/community-stats - Lấy thống kê phản hồi cộng đồng cho domain
+app.get('/api/community-stats', (req, res) => {
+  const domain = String(req.query.domain || '');
+  if (!domain) return res.status(400).json({ error: 'Missing domain parameter' });
+  const stats = getCommunityStats(domain);
+  return res.json(stats || { domain, accurateCount: 0, falseAlarmCount: 0, verifiedStatus: 'unverified' });
 });
 
 // POST /api/translate - 5x Faster AI Translation Engine with Array Payload & thinkingBudget: 0
