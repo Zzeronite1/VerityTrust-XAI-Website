@@ -1,0 +1,51 @@
+/* Stylesheet cho trang index.html độc lập. Chỉ quét index.html để CSS sinh ra gọn nhất. */
+@import "tailwindcss" source(none);
+@source "../index.html";
+
+@theme {
+  --font-sans: "Lexend", system-ui, -apple-system, sans-serif;
+  --font-display: "Montserrat", system-ui, -apple-system, sans-serif;
+
+  /* Line-height tuyệt đối như Tailwind v3 (v4 dùng tỉ lệ, làm chữ cỡ tuỳ biến bị lệch) */
+  --text-xs--line-height: 1rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+
+  --color-cyber-950: #030712;
+  --color-cyber-900: #070e21;
+  --color-cyber-850: #0b1329;
+  --color-cyber-800: #0f1c40;
+  --color-cyber-700: #172a5e;
+  --color-cyber-600: #233f8a;
+  --color-ocean-200: #bae6fd;
+  --color-ocean-300: #7dd3fc;
+  --color-ocean-400: #38bdf8;
+  --color-ocean-500: #0ea5e9;
+  --color-ocean-600: #0284c7;
+}
+
+/* Giữ hành vi mặc định của Tailwind v3 (bản CDN cũ) để giao diện không đổi */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+}

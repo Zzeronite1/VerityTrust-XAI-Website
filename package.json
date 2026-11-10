@@ -6,35 +6,45 @@
   "scripts": {
     "dev": "tsx server.ts",
     "dev:watch": "tsx watch --ignore dist --ignore .git --ignore scripts server.ts",
-    "start": "tsx server.ts",
+    "start": "NODE_ENV=production tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
+    "test": "tsx scripts/test-unified-engine.ts",
+    "eval:a": "tsx scripts/eval-accuracy.ts --dataset eval/datasets/set-a-legit-gambling.json --phishing-file eval/datasets/set-a-phishing-openphish.txt --phishing 120 --seed 3 --concurrency 5 --out eval/results/set-a.json",
+    "eval:b": "tsx scripts/eval-accuracy.ts --dataset eval/datasets/set-b-legit-gambling.json --phishing-file eval/datasets/set-b-phishing.txt --phishing 1000 --concurrency 5 --out eval/results/set-b.json",
+    "eval:c": "tsx scripts/eval-accuracy.ts --dataset eval/datasets/set-c-legit-gambling.json --phishing-file eval/datasets/set-c-phishing.txt --phishing 1000 --concurrency 4 --out eval/results/set-c.json",
+    "eval:metrics": "tsx scripts/eval-metrics.ts eval/results/set-a.json eval/results/set-b.json eval/results/set-c.json",
     "sync": "git add -A && git commit -m \"chore: update code\" && git push origin main"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
+    "compression": "^1.8.2",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "firebase": "^13.0.0",
     "jszip": "^3.10.2",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
+    "playwright-core": "^1.65.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "tldts": "^7.4.19",
+    "undici": "^6.29.1",
     "vite": "^8.3.0"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.1",
+    "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.4.21",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
-    "typescript": "^7.0.2",
-    "@types/express": "^4.17.21"
+    "typescript": "^7.0.2"
   }
 }

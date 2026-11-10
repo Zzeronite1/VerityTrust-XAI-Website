@@ -11,140 +11,114 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
 
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              cyber: {
-                950: '#030712',
-                900: '#070e21',
-                850: '#0b1329',
-                800: '#0f1c40',
-                700: '#172a5e',
-                600: '#233f8a',
-              },
-              ocean: {
-                200: '#bae6fd',
-                300: '#7dd3fc',
-                400: '#38bdf8',
-                500: '#0ea5e9',
-                600: '#0284c7',
-              }
-            },
-            fontFamily: {
-              sans: ['"Lexend"', 'system-ui', '-apple-system', 'sans-serif'],
-              display: ['"Montserrat"', 'system-ui', '-apple-system', 'sans-serif'],
-            },
-          },
-        },
-      };
-    </script>
+    <!-- Tailwind CSS biên dịch sẵn lúc build (thay cho CDN biên dịch trong trình duyệt) -->
+    <link rel="stylesheet" href="/src/landing.css" />
 
     <style>
-      /* ===== MODERN DARK TECH TYPOGRAPHY & BASE ===== */
-      :root {
-        --font-main: 'Lexend', system-ui, sans-serif;
-        --font-display: 'Montserrat', system-ui, sans-serif;
-      }
+      /* Đặt trong layer để các utility Tailwind vẫn được ưu tiên như bản CDN cũ */
+      @layer components {
+        /* ===== MODERN DARK TECH TYPOGRAPHY & BASE ===== */
+        :root {
+          --font-main: 'Lexend', system-ui, sans-serif;
+          --font-display: 'Montserrat', system-ui, sans-serif;
+        }
 
-      body {
-        background-color: #030712;
-        color: #ffffff;
-        font-family: var(--font-main);
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
+        body {
+          background-color: #030712;
+          color: #ffffff;
+          font-family: var(--font-main);
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+        }
 
-      /* Quy định chữ in đậm có màu xanh biển nổi bật */
-      b, strong, .accent-bold {
-        color: #38bdf8;
-        font-weight: 700;
-      }
+        /* Quy định chữ in đậm có màu xanh biển nổi bật */
+        b, strong, .accent-bold {
+          color: #38bdf8;
+          font-weight: 700;
+        }
 
-      /* Typography H1 Heading */
-      .hero-heading {
-        font-family: var(--font-main);
-        font-weight: 700;
-        line-height: 1.2;
-        letter-spacing: -0.02em;
-      }
+        /* Typography H1 Heading */
+        .hero-heading {
+          font-family: var(--font-main);
+          font-weight: 700;
+          line-height: 1.2;
+          letter-spacing: -0.02em;
+        }
 
-      /* Subtitle */
-      .hero-subtitle {
-        font-family: var(--font-main);
-        font-weight: 400;
-        color: #94a3b8;
-        line-height: 1.6;
-      }
+        /* Subtitle */
+        .hero-subtitle {
+          font-family: var(--font-main);
+          font-weight: 400;
+          color: #94a3b8;
+          line-height: 1.6;
+        }
 
-      /* Logo & Counter Stats Font */
-      .font-display {
-        font-family: var(--font-display);
-      }
+        /* Logo & Counter Stats Font */
+        .font-display {
+          font-family: var(--font-display);
+        }
 
-      /* Micro-interactions: 0.2s cubic-bezier */
-      .smooth-interactive {
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      }
+        /* Micro-interactions: 0.2s cubic-bezier */
+        .smooth-interactive {
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-      /* Cyber grid pattern nền xanh đen công nghệ */
-      .cyber-grid {
-        background-image:
-          linear-gradient(to right, rgba(56, 189, 248, 0.04) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
-        background-size: 32px 32px;
-      }
+        /* Cyber grid pattern nền xanh đen công nghệ */
+        .cyber-grid {
+          background-image:
+            linear-gradient(to right, rgba(56, 189, 248, 0.04) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
+          background-size: 32px 32px;
+        }
 
-      /* Tab transition */
-      .tab-content {
-        transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      }
+        /* Tab transition */
+        .tab-content {
+          transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-      /* Radar & Live HUD Animations */
-      @keyframes radarSpin {
-        from { transform: rotate(0deg); }
-        to   { transform: rotate(360deg); }
-      }
-      @keyframes laserScan {
-        0%   { top: -2%; opacity: 0; }
-        15%  { opacity: 1; }
-        85%  { opacity: 1; }
-        100% { top: 102%; opacity: 0; }
-      }
-      @keyframes shimmerMove {
-        0%   { background-position: -200% 0; }
-        100% { background-position:  200% 0; }
-      }
-      @keyframes wave {
-        0%, 100% { height: 6px; }
-        50%       { height: 20px; }
-      }
+        /* Radar & Live HUD Animations */
+        @keyframes radarSpin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        @keyframes laserScan {
+          0%   { top: -2%; opacity: 0; }
+          15%  { opacity: 1; }
+          85%  { opacity: 1; }
+          100% { top: 102%; opacity: 0; }
+        }
+        @keyframes shimmerMove {
+          0%   { background-position: -200% 0; }
+          100% { background-position:  200% 0; }
+        }
+        @keyframes wave {
+          0%, 100% { height: 6px; }
+          50%       { height: 20px; }
+        }
 
-      .animate-radar-spin  { animation: radarSpin 3.5s linear infinite; }
-      .animate-shimmer     {
-        background: linear-gradient(90deg, rgba(2, 132, 199, 0.3) 0%, rgba(56, 189, 248, 0.9) 50%, rgba(2, 132, 199, 0.3) 100%);
-        background-size: 200% 100%;
-        animation: shimmerMove 1.6s infinite linear;
+        .animate-radar-spin  { animation: radarSpin 3.5s linear infinite; }
+        .animate-shimmer     {
+          background: linear-gradient(90deg, rgba(2, 132, 199, 0.3) 0%, rgba(56, 189, 248, 0.9) 50%, rgba(2, 132, 199, 0.3) 100%);
+          background-size: 200% 100%;
+          animation: shimmerMove 1.6s infinite linear;
+        }
+
+        .wave-bar { animation: wave 0.9s ease-in-out infinite; }
+        .wave-bar:nth-child(2) { animation-duration: 1.1s; }
+        .wave-bar:nth-child(3) { animation-duration: 0.75s; }
+        .wave-bar:nth-child(4) { animation-duration: 1.3s; }
+        .wave-bar:nth-child(5) { animation-duration: 0.85s; }
+
+        .score-ring circle.progress {
+          transition: stroke-dashoffset 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 7px; height: 7px; }
+        ::-webkit-scrollbar-track { background: #030712; }
+        ::-webkit-scrollbar-thumb { background: #172a5e; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
       }
-
-      .wave-bar { animation: wave 0.9s ease-in-out infinite; }
-      .wave-bar:nth-child(2) { animation-duration: 1.1s; }
-      .wave-bar:nth-child(3) { animation-duration: 0.75s; }
-      .wave-bar:nth-child(4) { animation-duration: 1.3s; }
-      .wave-bar:nth-child(5) { animation-duration: 0.85s; }
-
-      .score-ring circle.progress {
-        transition: stroke-dashoffset 0.85s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-
-      /* Custom scrollbar */
-      ::-webkit-scrollbar { width: 7px; height: 7px; }
-      ::-webkit-scrollbar-track { background: #030712; }
-      ::-webkit-scrollbar-thumb { background: #172a5e; border-radius: 4px; }
-      ::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
     </style>
   </head>
 
@@ -363,7 +337,7 @@
                   type="text"
                   required
                   placeholder="Ví dụ: shopee.vn, vietcombank.com.vn, fpt.com hoặc dán liên kết..."
-                  class="w-full bg-[#070e21] border border-slate-700/80 rounded-2xl pl-12 pr-4 py-3.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-400/30 smooth-interactive font-mono"
+                  class="w-full bg-[#070e21] border border-slate-700/80 rounded-2xl pl-12 pr-4 py-3.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-400/30 smooth-interactive font-mono"
                 />
                 <!-- Globe icon -->
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-sky-400 absolute left-4 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -374,12 +348,12 @@
               <!-- Nút chọn mẫu thử nghiệm nhanh (Quick Chips với smooth-interactive) -->
               <div class="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
                 <span class="text-slate-400 font-medium">Tra cứu mẫu:</span>
-                <button type="button" onclick="setUrl('shopee.vn')" class="px-3 py-1.5 rounded-xl bg-[#070e21] hover:bg-[#0b1739] hover:border-sky-400/60 text-slate-300 hover:text-sky-200 font-mono text-[11px] border border-slate-800 cursor-pointer shadow-sm hover:shadow-[0_0_12px_rgba(56,189,248,0.25)] hover:-translate-y-0.5 smooth-interactive">shopee.vn</button>
-                <button type="button" onclick="setUrl('vietcombank.com.vn')" class="px-3 py-1.5 rounded-xl bg-[#070e21] hover:bg-[#0b1739] hover:border-sky-400/60 text-slate-300 hover:text-sky-200 font-mono text-[11px] border border-slate-800 cursor-pointer shadow-sm hover:shadow-[0_0_12px_rgba(56,189,248,0.25)] hover:-translate-y-0.5 smooth-interactive">vietcombank.com.vn</button>
-                <button type="button" onclick="setUrl('chinhphu.vn')" class="px-3 py-1.5 rounded-xl bg-[#070e21] hover:bg-[#0b1739] hover:border-sky-400/60 text-slate-300 hover:text-sky-200 font-mono text-[11px] border border-slate-800 cursor-pointer shadow-sm hover:shadow-[0_0_12px_rgba(56,189,248,0.25)] hover:-translate-y-0.5 smooth-interactive">chinhphu.vn</button>
-                <button type="button" onclick="setUrl('fpt.com')" class="px-3 py-1.5 rounded-xl bg-[#070e21] hover:bg-[#0b1739] hover:border-sky-400/60 text-slate-300 hover:text-sky-200 font-mono text-[11px] border border-slate-800 cursor-pointer shadow-sm hover:shadow-[0_0_12px_rgba(56,189,248,0.25)] hover:-translate-y-0.5 smooth-interactive">fpt.com</button>
-                <button type="button" onclick="setUrl('https://www.bet88.casino/')" class="px-3 py-1.5 rounded-xl bg-red-950/30 hover:bg-red-900/50 hover:border-red-500/70 text-red-300 hover:text-red-200 font-mono text-[11px] border border-red-800/50 cursor-pointer shadow-sm hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:-translate-y-0.5 smooth-interactive">⚠️ bet88.casino (Mẫu cờ bạc)</button>
-                <button type="button" onclick="setUrl('https://www.m88sut.com/')" class="px-3 py-1.5 rounded-xl bg-red-950/30 hover:bg-red-900/50 hover:border-red-500/70 text-red-300 hover:text-red-200 font-mono text-[11px] border border-red-800/50 cursor-pointer shadow-sm hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:-translate-y-0.5 smooth-interactive">⚠️ m88sut.com (Mẫu cá cược)</button>
+                <button type="button" onclick="setUrl('shopee.vn')" class="px-3 py-1.5 rounded-xl bg-[#070e21] hover:bg-[#0b1739] hover:border-sky-400/60 text-slate-300 hover:text-sky-200 font-mono text-[11px] border border-slate-800 cursor-pointer shadow-xs hover:shadow-[0_0_12px_rgba(56,189,248,0.25)] hover:-translate-y-0.5 smooth-interactive">shopee.vn</button>
+                <button type="button" onclick="setUrl('vietcombank.com.vn')" class="px-3 py-1.5 rounded-xl bg-[#070e21] hover:bg-[#0b1739] hover:border-sky-400/60 text-slate-300 hover:text-sky-200 font-mono text-[11px] border border-slate-800 cursor-pointer shadow-xs hover:shadow-[0_0_12px_rgba(56,189,248,0.25)] hover:-translate-y-0.5 smooth-interactive">vietcombank.com.vn</button>
+                <button type="button" onclick="setUrl('chinhphu.vn')" class="px-3 py-1.5 rounded-xl bg-[#070e21] hover:bg-[#0b1739] hover:border-sky-400/60 text-slate-300 hover:text-sky-200 font-mono text-[11px] border border-slate-800 cursor-pointer shadow-xs hover:shadow-[0_0_12px_rgba(56,189,248,0.25)] hover:-translate-y-0.5 smooth-interactive">chinhphu.vn</button>
+                <button type="button" onclick="setUrl('fpt.com')" class="px-3 py-1.5 rounded-xl bg-[#070e21] hover:bg-[#0b1739] hover:border-sky-400/60 text-slate-300 hover:text-sky-200 font-mono text-[11px] border border-slate-800 cursor-pointer shadow-xs hover:shadow-[0_0_12px_rgba(56,189,248,0.25)] hover:-translate-y-0.5 smooth-interactive">fpt.com</button>
+                <button type="button" onclick="setUrl('https://www.bet88.casino/')" class="px-3 py-1.5 rounded-xl bg-red-950/30 hover:bg-red-900/50 hover:border-red-500/70 text-red-300 hover:text-red-200 font-mono text-[11px] border border-red-800/50 cursor-pointer shadow-xs hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:-translate-y-0.5 smooth-interactive">⚠️ bet88.casino (Mẫu cờ bạc)</button>
+                <button type="button" onclick="setUrl('https://www.m88sut.com/')" class="px-3 py-1.5 rounded-xl bg-red-950/30 hover:bg-red-900/50 hover:border-red-500/70 text-red-300 hover:text-red-200 font-mono text-[11px] border border-red-800/50 cursor-pointer shadow-xs hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:-translate-y-0.5 smooth-interactive">⚠️ m88sut.com (Mẫu cá cược)</button>
               </div>
             </div>
 
@@ -523,8 +497,39 @@
               <div id="recommendations-list" class="space-y-2"></div>
             </div>
 
+            <!-- Giải thích điểm số (XAI): từng bằng chứng kỹ thuật cộng/trừ bao nhiêu điểm -->
+            <div id="score-factors-section" class="hidden space-y-3 pt-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                <span>Giải thích Điểm số (Bằng chứng Kỹ thuật)</span>
+              </h3>
+              <p id="score-factors-meta" class="text-[11px] text-slate-400 font-mono"></p>
+              <div id="score-factors-list" class="space-y-1.5"></div>
+            </div>
+
+            <!-- Hành trình qua các tầng quét (dừng sớm ở tầng nào, mỗi tầng mất bao lâu) -->
+            <div id="pipeline-section" class="hidden space-y-3 pt-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                <span>Các Tầng Quét</span>
+              </h3>
+              <p id="pipeline-meta" class="text-[11px] text-slate-400 font-mono"></p>
+              <div id="pipeline-list" class="space-y-1.5"></div>
+            </div>
+
+            <!-- Tầng 5: giải thích bằng ngôn ngữ tự nhiên, chỉ chạy khi người dùng yêu cầu -->
+            <div class="space-y-3 pt-2">
+              <button id="explain-btn" type="button" onclick="requestExplanation()" class="px-5 py-2.5 rounded-xl bg-[#0b1329] hover:bg-[#0f1c40] border border-sky-500/40 hover:border-sky-400 text-sky-300 hover:text-white text-xs font-bold smooth-interactive cursor-pointer">
+                Xem giải thích chi tiết (AI)
+              </button>
+              <div id="explain-box" class="hidden p-4 rounded-2xl bg-[#070e21] border border-slate-800 text-xs text-slate-300 leading-relaxed space-y-2">
+                <div id="explain-engine" class="text-[11px] text-slate-500 font-mono"></div>
+                <div id="explain-text" class="space-y-2"></div>
+              </div>
+            </div>
+
             <!-- Khối Khẳng định AI Disclaimer (Khẳng định AI đôi khi có sai sót) -->
-            <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-200/90 text-xs flex items-start gap-3 leading-relaxed shadow-sm">
+            <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-200/90 text-xs flex items-start gap-3 leading-relaxed shadow-xs">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-400 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
                 <line x1="12" y1="9" x2="12" y2="13"/>
@@ -896,14 +901,19 @@
           });
         }
 
+        const LINK_DIST = 140;
+        const LINK_DIST_SQ = LINK_DIST * LINK_DIST;
+
         function draw() {
           ctx.clearRect(0, 0, W, H);
           for (let i = 0; i < N; i++) {
             for (let j = i + 1; j < N; j++) {
               const dx = particles[i].x - particles[j].x;
               const dy = particles[i].y - particles[j].y;
-              const d = Math.sqrt(dx * dx + dy * dy);
-              if (d < 140) {
+              const distSq = dx * dx + dy * dy;
+              // So sánh bình phương khoảng cách trước, chỉ tính căn bậc hai cho cặp điểm thực sự được nối
+              if (distSq < LINK_DIST_SQ) {
+                const d = Math.sqrt(distSq);
                 ctx.beginPath();
                 ctx.strokeStyle = `rgba(56, 189, 248, ${(1 - d / 140) * 0.12})`;
                 ctx.lineWidth = 0.6;
@@ -924,8 +934,22 @@
             ctx.fill();
             ctx.globalAlpha = 1;
           });
-          requestAnimationFrame(draw);
+          if (animating) requestAnimationFrame(draw);
         }
+
+        // Tôn trọng cài đặt giảm chuyển động của hệ điều hành: chỉ vẽ một khung tĩnh
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        let animating = !reduceMotion.matches && !document.hidden;
+        function setAnimating(next) {
+          if (next && !animating) {
+            animating = true;
+            requestAnimationFrame(draw);
+          } else {
+            animating = next;
+          }
+        }
+        document.addEventListener('visibilitychange', () => setAnimating(!reduceMotion.matches && !document.hidden));
+        reduceMotion.addEventListener('change', () => setAnimating(!reduceMotion.matches && !document.hidden));
         draw();
       })();
 
@@ -1139,11 +1163,102 @@
           recSection.classList.add('hidden');
         }
 
+        // 7. Giải thích điểm số (XAI)
+        const factorsSection = document.getElementById('score-factors-section');
+        const breakdown = data.score_breakdown;
+        if (breakdown && Array.isArray(breakdown.factors) && breakdown.factors.length > 0) {
+          factorsSection.classList.remove('hidden');
+          const parts = [`Điểm bằng chứng: ${breakdown.evidence_score}/100`];
+          if (typeof breakdown.ai_score === 'number') parts.push(`Điểm AI: ${breakdown.ai_score}/100`);
+          parts.push(`Độ đầy đủ bằng chứng: ${breakdown.evidence_completeness}%`);
+          if (breakdown.jev_decision) parts.push(`Trọng tài: ${breakdown.jev_decision.engine}`);
+          document.getElementById('score-factors-meta').textContent = parts.join(' · ');
+          document.getElementById('score-factors-list').innerHTML = breakdown.factors.map(f => {
+            const positive = f.delta > 0;
+            const tone = positive
+              ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+              : f.delta <= -25
+              ? 'bg-red-500/10 border-red-500/30 text-red-300'
+              : 'bg-amber-500/10 border-amber-500/25 text-amber-300';
+            return `
+              <div class="flex items-start gap-3 p-2.5 rounded-xl border ${tone} text-xs">
+                <span class="font-mono font-bold w-10 shrink-0 text-right">${positive ? '+' : ''}${escapeHtml(f.delta)}</span>
+                <div>
+                  <div class="font-semibold text-white">${escapeHtml(f.label)}</div>
+                  <div class="text-[11px] text-slate-400 leading-snug">${escapeHtml(f.detail)}</div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          factorsSection.classList.add('hidden');
+        }
+
+        // 8. Hành trình qua các tầng quét
+        const pipelineSection = document.getElementById('pipeline-section');
+        const pipeline = data.pipeline;
+        if (pipeline && Array.isArray(pipeline.tiers)) {
+          pipelineSection.classList.remove('hidden');
+          document.getElementById('pipeline-meta').textContent =
+            `Kết luận ở Tầng ${pipeline.exit_tier}: ${pipeline.exit_reason} · tổng ${pipeline.total_ms}ms`;
+          document.getElementById('pipeline-list').innerHTML = pipeline.tiers.map(t => {
+            const tone = t.status === 'exit'
+              ? 'bg-sky-500/10 border-sky-500/40 text-sky-300'
+              : t.status === 'passed'
+              ? 'bg-slate-800/60 border-slate-700 text-slate-300'
+              : 'bg-transparent border-slate-800 text-slate-500';
+            const label = t.status === 'exit' ? 'DỪNG' : t.status === 'passed' ? 'ĐÃ CHẠY' : 'BỎ QUA';
+            return `
+              <div class="flex items-start gap-3 p-2.5 rounded-xl border ${tone} text-xs">
+                <span class="font-mono font-bold w-16 shrink-0">Tầng ${escapeHtml(t.tier)}</span>
+                <div class="flex-1">
+                  <div class="font-semibold">${escapeHtml(t.name)} <span class="text-[10px] font-mono opacity-70">· ${label}${t.status !== 'skipped' ? ` · ${escapeHtml(t.ms)}ms` : ''}</span></div>
+                  <div class="text-[11px] text-slate-400 leading-snug">${escapeHtml(t.note)}</div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          pipelineSection.classList.add('hidden');
+        }
+        lastAnalyzedUrl = data.analyzed_url || '';
+        document.getElementById('explain-box').classList.add('hidden');
+        document.getElementById('explain-btn').disabled = false;
+
         // Show result section & scroll smooth
         document.getElementById('result-section').classList.remove('hidden');
         setTimeout(() => {
           document.getElementById('result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
+      }
+
+      // ── Tầng 5: giải thích chi tiết theo yêu cầu ─────────────────────────────
+      let lastAnalyzedUrl = '';
+      async function requestExplanation() {
+        if (!lastAnalyzedUrl) return;
+        const btn = document.getElementById('explain-btn');
+        const box = document.getElementById('explain-box');
+        btn.disabled = true;
+        btn.textContent = 'Đang soạn giải thích...';
+        try {
+          const res = await fetch('/api/explain', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: lastAnalyzedUrl }),
+            signal: AbortSignal.timeout(45000),
+          });
+          const data = await res.json().catch(() => ({}));
+          document.getElementById('explain-engine').textContent = data.engine ? '⚡ ' + data.engine : '';
+          const text = res.ok ? (data.explanation || '') : (data.message || 'Không tạo được giải thích.');
+          document.getElementById('explain-text').innerHTML = text.split(/\n{2,}/).map(p => `<p>${escapeHtml(p)}</p>`).join('');
+          box.classList.remove('hidden');
+        } catch (err) {
+          document.getElementById('explain-text').innerHTML = '<p>Không kết nối được máy chủ để tạo giải thích.</p>';
+          box.classList.remove('hidden');
+        } finally {
+          btn.textContent = 'Xem giải thích chi tiết (AI)';
+          btn.disabled = false;
+        }
       }
 
       function escapeHtml(text) {
@@ -1170,7 +1285,8 @@
         const phases = [
           'Đang tải và trích xuất nội dung văn bản từ trang web...',
           'Đang rà soát từ khóa và các liên kết hoạt động...',
-          'Đang đưa nội dung vào Động cơ AI phân tích ngữ nghĩa...',
+          'Đang tra cứu tuổi tên miền, độ phổ biến và danh sách đen...',
+          'Đang đưa nội dung và bằng chứng vào Động cơ AI phân tích ngữ nghĩa...',
           'Đang đối chiếu quy định pháp luật và cấp Báo cáo...',
         ];
         let phaseIdx = 0;
@@ -1180,13 +1296,19 @@
           phaseEl.textContent = phases[phaseIdx];
         }, 1500);
 
+        // Không để nút bị kẹt ở trạng thái "đang thẩm định" nếu máy chủ không phản hồi
+        const abortController = new AbortController();
+        const abortTimer = setTimeout(() => abortController.abort(), 60000);
+
         try {
           const response = await fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url }),
+            signal: abortController.signal,
           });
 
+          clearTimeout(abortTimer);
           clearInterval(phaseInterval);
           setLoading(false);
 
@@ -1200,8 +1322,13 @@
           renderResult(data);
 
         } catch (err) {
+          clearTimeout(abortTimer);
           clearInterval(phaseInterval);
           setLoading(false);
+          if (err && err.name === 'AbortError') {
+            showError('Máy chủ phản hồi quá lâu (hơn 60 giây). Vui lòng thử lại.');
+            return;
+          }
           showError('Không thể kết nối đến máy chủ. Hãy đảm bảo server đang chạy (npm run dev).');
           console.error('[Analyze error]:', err);
         }
