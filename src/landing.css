@@ -3,8 +3,8 @@
 @source "../index.html";
 
 @theme {
-  --font-sans: "Lexend", system-ui, -apple-system, sans-serif;
-  --font-display: "Montserrat", system-ui, -apple-system, sans-serif;
+  --font-sans: "Google Sans Text", "Google Sans", system-ui, -apple-system, sans-serif;
+  --font-display: "Google Sans", "Google Sans Text", system-ui, -apple-system, sans-serif;
 
   /* Line-height tuyệt đối như Tailwind v3 (v4 dùng tỉ lệ, làm chữ cỡ tuỳ biến bị lệch) */
   --text-xs--line-height: 1rem;
