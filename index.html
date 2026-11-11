@@ -398,49 +398,196 @@
             </button>
           </div>
 
-          <!-- Result Card chính -->
-          <div id="result-card" class="p-6 sm:p-8 rounded-3xl bg-[#0b1329]/90 border border-slate-800 shadow-2xl space-y-6 cyber-grid backdrop-blur-xl">
+          <!-- Result Card chính: Mockup Browser Window theo chuẩn UX/UI Verity -->
+          <div id="result-card" class="rounded-3xl bg-[#070e21]/95 border border-slate-800/90 shadow-[0_20px_50px_rgba(0,0,0,0.6)] overflow-hidden cyber-grid backdrop-blur-2xl space-y-0">
             
-            <!-- Top: Score Ring + Summary -->
-            <div class="flex flex-col sm:flex-row items-center gap-6">
-              
-              <!-- SVG Score Ring -->
-              <div class="relative shrink-0 flex items-center justify-center" style="width: 140px; height: 140px;">
-                <svg width="140" height="140" viewBox="0 0 140 140" class="absolute inset-0 -rotate-90">
-                  <circle cx="70" cy="70" r="60" fill="none" stroke="#172a5e" stroke-width="10"/>
-                  <circle
-                    id="score-ring"
-                    cx="70"
-                    cy="70"
-                    r="60"
-                    fill="none"
-                    stroke-width="10"
-                    stroke-linecap="round"
-                    stroke-dasharray="377"
-                    stroke-dashoffset="377"
-                    class="score-ring progress"
-                  />
-                </svg>
-                <div class="relative text-center">
-                  <div id="score-num" class="font-display text-4xl font-black text-white">0</div>
-                  <div class="text-[10px] text-sky-400 font-bold uppercase tracking-wider">Trust Score</div>
+            <!-- Mockup Window Top Navigation Bar (Thanh điều hướng trình duyệt) -->
+            <div class="px-5 py-3.5 bg-[#0a1226]/90 border-b border-slate-800/80 flex items-center justify-between gap-4">
+              <!-- 3 Window Control Dots (Nút chấm cửa sổ hệ thống) -->
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-red-500/70 border border-red-500/40 inline-block"></span>
+                <span class="w-3 h-3 rounded-full bg-amber-500/70 border border-amber-500/40 inline-block"></span>
+                <span class="w-3 h-3 rounded-full bg-emerald-500/70 border border-emerald-500/40 inline-block"></span>
+              </div>
+
+              <!-- Center URL Capsule Bar (Thanh địa chỉ bảo mật) -->
+              <div class="flex-1 max-w-lg mx-auto">
+                <div class="flex items-center justify-center gap-2 px-4 py-1.5 rounded-xl bg-[#050b17] border border-slate-700/60 text-xs text-slate-300 font-mono shadow-inner">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span id="mockup-url-display" class="truncate font-mono">https://example.com</span>
                 </div>
               </div>
 
-              <!-- Verdict & Summary -->
-              <div class="flex-1 space-y-3 text-center sm:text-left">
-                <div id="status-badge" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold border">
-                  <span id="status-dot" class="w-2.5 h-2.5 rounded-full"></span>
-                  <span id="status-text">Đang phân tích</span>
-                </div>
-                <p id="summary-text" class="text-sm text-slate-200 leading-relaxed"></p>
-                <div class="flex flex-wrap items-center gap-2 pt-1 text-xs">
-                  <span id="analyzed-url-display" class="text-sky-400 font-mono"></span>
-                  <span class="text-slate-500 hidden sm:inline">•</span>
-                  <span id="engine-display" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-950/60 border border-sky-400/30 text-sky-300 text-[11px] font-mono"></span>
-                </div>
+              <!-- Right Status Badge (Nhãn báo cáo) -->
+              <div class="flex items-center gap-2">
+                <span class="px-3 py-1 rounded-lg bg-[#0e1b38] border border-sky-500/30 text-sky-300 text-[10px] font-bold tracking-wider uppercase">
+                  BÁO CÁO THẨM ĐỊNH
+                </span>
               </div>
             </div>
+
+            <!-- Mockup Window Content (Grid 3 Cột Chuẩn UX/UI) -->
+            <div class="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center border-b border-slate-800/80">
+              
+              <!-- CỘT 1: ĐIỂM MINH BẠCH & VÒNG GAUGE (Col span 3) -->
+              <div class="lg:col-span-3 flex flex-col items-center text-center space-y-4">
+                <div class="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  ĐIỂM MINH BẠCH
+                </div>
+
+                <!-- Glowing Circular Progress Gauge (Đồng hồ tiến trình phát sáng) -->
+                <div class="relative flex items-center justify-center" style="width: 150px; height: 150px;">
+                  <svg width="150" height="150" viewBox="0 0 150 150" class="absolute inset-0 -rotate-90">
+                    <circle cx="75" cy="75" r="62" fill="none" stroke="#0f1f45" stroke-width="10"/>
+                    <circle
+                      id="score-ring"
+                      cx="75"
+                      cy="75"
+                      r="62"
+                      fill="none"
+                      stroke-width="10"
+                      stroke-linecap="round"
+                      stroke-dasharray="390"
+                      stroke-dashoffset="390"
+                      class="score-ring progress transition-all duration-1000 ease-out"
+                    />
+                  </svg>
+                  <div class="relative text-center">
+                    <div id="score-num" class="font-display text-4xl sm:text-5xl font-black text-white tracking-tight">0</div>
+                    <div class="text-xs text-slate-400 font-medium mt-0.5">/ 100</div>
+                  </div>
+                </div>
+
+                <!-- Status Pill Badge (Nhãn trạng thái) -->
+                <div id="status-badge" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-colors">
+                  <span id="status-dot" class="w-2 h-2 rounded-full"></span>
+                  <span id="status-text">Đang thẩm định</span>
+                </div>
+
+                <!-- Subtitle note below badge (Ghi chú phụ) -->
+                <p id="score-subnote" class="text-xs text-slate-400 leading-snug max-w-[200px]">
+                  Đang phân tích dữ liệu kỹ thuật
+                </p>
+              </div>
+
+              <!-- CỘT 2: ĐIỂM NHẤN BẰNG CHỨNG (Col span 5) -->
+              <div class="lg:col-span-5 space-y-4">
+                <div class="space-y-1">
+                  <h2 id="highlight-heading" class="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+                    Hiểu rõ trước khi tin tưởng.
+                  </h2>
+                  <p id="highlight-subheading" class="text-xs text-slate-400">
+                    Mỗi kết luận đều đi kèm lý do và bằng chứng.
+                  </p>
+                </div>
+
+                <!-- Callout Box Bằng Chứng Cốt Lõi -->
+                <div id="highlight-callout-box" class="p-4 sm:p-5 rounded-2xl bg-[#091530]/85 border border-slate-800/90 shadow-inner space-y-3">
+                  <div class="flex items-center justify-between gap-2">
+                    <span id="callout-tag" class="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                      <span id="callout-tag-icon">⚠️</span>
+                      <span id="callout-tag-text">CẦN LƯU Ý</span>
+                    </span>
+                    <span id="engine-display" class="text-[10px] text-slate-400 font-mono truncate max-w-[180px]"></span>
+                  </div>
+
+                  <div id="callout-title" class="text-sm font-bold text-white leading-snug">
+                    Đang phân tích các điều khoản & nội dung...
+                  </div>
+
+                  <div id="callout-quote" class="text-xs text-slate-300 italic border-l-2 border-sky-400/50 pl-3 leading-relaxed">
+                    "Hệ thống đang đối chiếu dữ liệu cấu trúc trang, chứng chỉ số và quy định pháp lý..."
+                  </div>
+
+                  <div id="callout-source" class="text-[11px] text-slate-400 font-mono">
+                    Nguồn: Phân tích hạ tầng & chính sách bảo mật
+                  </div>
+                </div>
+
+                <!-- Info Tagline -->
+                <div class="flex items-center gap-2 text-xs text-slate-400">
+                  <span class="text-sky-400 font-bold">ⓘ</span>
+                  <span>Không chỉ cảnh báo. Verity giải thích vì sao.</span>
+                </div>
+              </div>
+
+              <!-- CỘT 3: KẾT QUẢ THẨM ĐỊNH (Col span 4) -->
+              <div class="lg:col-span-4 space-y-4 p-4 sm:p-5 rounded-2xl bg-[#0b1329]/75 border border-slate-800/80 shadow-md">
+                <div class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                  <span>KẾT QUẢ THẨM ĐỊNH</span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
+                </div>
+
+                <!-- 3 Thanh tiến trình Trụ cột -->
+                <div class="space-y-4 pt-1">
+                  
+                  <!-- Trụ cột 1: Minh bạch dữ liệu -->
+                  <div class="space-y-1.5">
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-slate-300 font-medium">Minh bạch dữ liệu</span>
+                      <span id="pillar-transparency-label" class="font-bold text-amber-400 text-[11px]">Cần làm rõ</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                      <div id="pillar-transparency-bar" class="h-full bg-amber-400 rounded-full transition-all duration-700" style="width: 65%;"></div>
+                    </div>
+                  </div>
+
+                  <!-- Trụ cột 2: Điều khoản pháp lý -->
+                  <div class="space-y-1.5">
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-slate-300 font-medium">Điều khoản pháp lý</span>
+                      <span id="pillar-legal-label" class="font-bold text-sky-400 text-[11px]">Đã phân tích</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                      <div id="pillar-legal-bar" class="h-full bg-sky-400 rounded-full transition-all duration-700" style="width: 85%;"></div>
+                    </div>
+                  </div>
+
+                  <!-- Trụ cột 3: Tín hiệu lừa đảo -->
+                  <div class="space-y-1.5">
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-slate-300 font-medium">Tín hiệu lừa đảo</span>
+                      <span id="pillar-safety-label" class="font-bold text-emerald-400 text-[11px]">Rủi ro thấp</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                      <div id="pillar-safety-bar" class="h-full bg-emerald-400 rounded-full transition-all duration-700" style="width: 90%;"></div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- Link xem phân tích chi tiết -->
+                <div class="pt-2 border-t border-slate-800/80">
+                  <a href="#detailed-findings-anchor" onclick="scrollToDetails(event)" class="text-xs font-semibold text-sky-400 hover:text-sky-300 flex items-center justify-between group smooth-interactive cursor-pointer">
+                    <span>Xem phân tích chi tiết</span>
+                    <span class="group-hover:translate-x-1 transition-transform">→</span>
+                  </a>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Footer Disclaimer ngay dưới cửa sổ trình duyệt -->
+            <div class="px-6 py-3 bg-[#030712]/90 border-t border-slate-800/80 text-center">
+              <p class="text-[11px] text-slate-400 italic">
+                Minh bạch từ dữ liệu đến kết luận. AI hỗ trợ thẩm định, không thay thế cơ quan chức năng.
+              </p>
+            </div>
+
+            <!-- Anchor cuộn chi tiết -->
+            <div id="detailed-findings-anchor" class="pt-2"></div>
+
+            <!-- NỘI DUNG CHI TIẾT KÈM THEO (GIỮ NGUYÊN ĐẦY ĐỦ CÁC TÍNH NĂNG ĐÃ LÀM) -->
+            <div class="p-6 sm:p-8 space-y-6 pt-4">
+              <!-- Summary text chi tiết bổ trợ -->
+              <div class="p-4 rounded-2xl bg-[#070e21]/90 border border-slate-800/80 text-xs text-slate-300 leading-relaxed space-y-1">
+                <div class="font-bold text-sky-400 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <span>📋</span>
+                  <span>Tóm Tắt Báo Cáo Toàn Diện</span>
+                </div>
+                <p id="summary-text" class="text-slate-200"></p>
+                <div class="pt-1 text-[11px] text-slate-400 font-mono" id="analyzed-url-display"></div>
+              </div>
 
             <!-- Grid 2 Khối: Độ tuổi Phù hợp & Chứng chỉ Tiêu chuẩn Số -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
@@ -579,6 +726,7 @@
               <div class="text-slate-500 font-mono text-[10px]">
                 Nghị định 13/2023/NĐ-CP • Điều 321, 322 BLHS
               </div>
+            </div>
             </div>
           </div>
         </div>
@@ -1356,6 +1504,14 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
+      function scrollToDetails(e) {
+        if (e) e.preventDefault();
+        const target = document.getElementById('detailed-findings-anchor');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+
       // ── Render Result Logic ────────────────────────────────────────────────
       function renderResult(data) {
         const score = Math.max(0, Math.min(100, Math.round(data.trust_score)));
@@ -1364,48 +1520,162 @@
         const isWarning = status === 'warning';
         const isDangerous = status === 'dangerous';
 
-        let colorRing = '#10b981';
-        let badgeClass = 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300';
-        let dotColor = '#10b981';
-        let statusLabel = 'An toàn ✓';
+        let colorRing = '#38bdf8';
+        let badgeClass = 'bg-sky-500/15 border-sky-500/40 text-sky-300';
+        let dotColor = '#38bdf8';
+        let statusLabel = 'Khá minh bạch ✓';
+        let scoreSubnote = 'Không phát hiện dấu hiệu bất thường';
 
-        if (isWarning) {
+        if (score >= 85) {
+          colorRing = '#38bdf8';
+          badgeClass = 'bg-sky-500/15 border-sky-500/40 text-sky-300';
+          dotColor = '#38bdf8';
+          statusLabel = 'Rất minh bạch ✓';
+          scoreSubnote = 'Đạt chuẩn an toàn và minh bạch cao';
+        } else if (score >= 70) {
+          colorRing = '#10b981';
+          badgeClass = 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300';
+          dotColor = '#10b981';
+          statusLabel = 'Khá minh bạch ✓';
+          scoreSubnote = 'Có một số điểm cần lưu ý';
+        } else if (score >= 45 || isWarning) {
           colorRing = '#f59e0b';
           badgeClass = 'bg-amber-500/15 border-amber-500/40 text-amber-300';
           dotColor = '#f59e0b';
-          statusLabel = 'Cảnh báo ⚠️';
-        } else if (isDangerous) {
+          statusLabel = 'Cần lưu ý ⚠️';
+          scoreSubnote = 'Nhiều yếu tố rủi ro hoặc chưa rõ ràng';
+        } else {
           colorRing = '#ef4444';
           badgeClass = 'bg-red-500/15 border-red-500/40 text-red-300';
           dotColor = '#ef4444';
           statusLabel = 'Nguy hiểm / Bị cấm ✗';
+          scoreSubnote = 'Phát hiện hành vi độc hại hoặc cờ bạc';
         }
 
-        // SVG ring calculation: 2 * PI * 60 ≈ 377
-        const offset = 377 - (score / 100) * 377;
+        // SVG ring calculation (r = 62, 2 * PI * 62 ≈ 390)
+        const offset = 390 - (score / 100) * 390;
         const ring = document.getElementById('score-ring');
-        ring.style.stroke = colorRing;
-        setTimeout(() => { ring.style.strokeDashoffset = offset; }, 50);
+        if (ring) {
+          ring.style.stroke = colorRing;
+          setTimeout(() => { ring.style.strokeDashoffset = offset; }, 50);
+        }
 
         // Counter animation
         let current = 0;
         const scoreEl = document.getElementById('score-num');
         const interval = setInterval(() => {
-          current = Math.min(current + Math.ceil(score / 35), score);
-          scoreEl.textContent = current;
+          current = Math.min(current + (Math.ceil(score / 35) || 1), score);
+          if (scoreEl) scoreEl.textContent = current;
           if (current >= score) clearInterval(interval);
         }, 20);
 
-        // Badge trạng thái
+        // Badge trạng thái & Ghi chú phụ
         const badge = document.getElementById('status-badge');
-        badge.className = `inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold border ${badgeClass}`;
-        document.getElementById('status-dot').style.backgroundColor = dotColor;
-        document.getElementById('status-text').textContent = statusLabel;
+        if (badge) badge.className = `inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-colors ${badgeClass}`;
+        const dot = document.getElementById('status-dot');
+        if (dot) dot.style.backgroundColor = dotColor;
+        const statusText = document.getElementById('status-text');
+        if (statusText) statusText.textContent = statusLabel;
+        const subnoteEl = document.getElementById('score-subnote');
+        if (subnoteEl) subnoteEl.textContent = scoreSubnote;
+
+        // Mockup URL & Động cơ
+        const mockupUrl = document.getElementById('mockup-url-display');
+        if (mockupUrl) mockupUrl.textContent = data.analyzed_url || 'https://example.com';
+        const engineDisp = document.getElementById('engine-display');
+        if (engineDisp) engineDisp.textContent = data.analysis_engine ? `⚡ ${data.analysis_engine.slice(0, 32)}...` : '';
+
+        // Điểm nhấn Bằng chứng (Callout Box Cột Giữa)
+        const calloutTag = document.getElementById('callout-tag');
+        const calloutTagIcon = document.getElementById('callout-tag-icon');
+        const calloutTagText = document.getElementById('callout-tag-text');
+        const calloutTitle = document.getElementById('callout-title');
+        const calloutQuote = document.getElementById('callout-quote');
+        const calloutSource = document.getElementById('callout-source');
+        const highlightHeading = document.getElementById('highlight-heading');
+        const highlightSubheading = document.getElementById('highlight-subheading');
+
+        const redFlags = Array.isArray(data.red_flags) ? data.red_flags : [];
+        const factors = data.score_breakdown?.factors || [];
+        const topNegFactor = factors.find(f => f.delta < 0);
+        const topPosFactor = factors.find(f => f.delta > 0);
+
+        if (isDangerous) {
+          if (highlightHeading) highlightHeading.textContent = 'Cảnh báo rủi ro & vi phạm nghiêm trọng.';
+          if (highlightSubheading) highlightSubheading.textContent = 'Mỗi kết luận đều đi kèm bằng chứng và căn cứ pháp luật.';
+          if (calloutTag) calloutTag.className = 'px-2.5 py-1 rounded-lg bg-red-500/15 border border-red-500/30 text-red-300 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5';
+          if (calloutTagIcon) calloutTagIcon.textContent = '⛔';
+          if (calloutTagText) calloutTagText.textContent = 'NGUY HIỂM / BỊ CẤM';
+          if (calloutTitle) calloutTitle.textContent = redFlags[0] || 'Phát hiện hành vi lừa đảo hoặc vi phạm pháp luật';
+          if (calloutQuote) calloutQuote.textContent = `"${data.summary || topNegFactor?.detail || 'Hệ thống đã khóa điểm an toàn ở mức nguy hại.'}"`;
+          if (calloutSource) calloutSource.textContent = 'Căn cứ: Điều 321, 322 BLHS · Điều 8 Luật An ninh mạng';
+        } else if (isWarning || score < 75) {
+          if (highlightHeading) highlightHeading.textContent = 'Hiểu rõ trước khi tin tưởng.';
+          if (highlightSubheading) highlightSubheading.textContent = 'Mỗi kết luận đều đi kèm lý do và bằng chứng cụ thể.';
+          if (calloutTag) calloutTag.className = 'px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5';
+          if (calloutTagIcon) calloutTagIcon.textContent = '⚠️';
+          if (calloutTagText) calloutTagText.textContent = 'CẦN LƯU Ý';
+          if (calloutTitle) calloutTitle.textContent = topNegFactor?.label || redFlags[0] || 'Điều khoản chia sẻ dữ liệu chưa rõ ràng';
+          if (calloutQuote) calloutQuote.textContent = `"${topNegFactor?.detail || data.summary || 'Trang web có một số dấu hiệu cần kiểm tra thêm trước khi giao dịch.'}"`;
+          if (calloutSource) calloutSource.textContent = 'Nguồn: Bóc tách mã nguồn DOM & Phân tích chính sách';
+        } else {
+          if (highlightHeading) highlightHeading.textContent = 'Minh bạch & Đáng tin cậy.';
+          if (highlightSubheading) highlightSubheading.textContent = 'Đã đối soát toàn diện hạ tầng kỹ thuật và pháp lý số.';
+          if (calloutTag) calloutTag.className = 'px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5';
+          if (calloutTagIcon) calloutTagIcon.textContent = '✅';
+          if (calloutTagText) calloutTagText.textContent = 'MINH BẠCH CAO';
+          if (calloutTitle) calloutTitle.textContent = topPosFactor?.label || 'Chứng chỉ số TLS hợp lệ & Danh tiếng tên miền tốt';
+          if (calloutQuote) calloutQuote.textContent = `"${topPosFactor?.detail || data.summary || 'Trang web tuân thủ các tiêu chuẩn an ninh mạng cơ bản.'}"`;
+          if (calloutSource) calloutSource.textContent = 'Nguồn: Cơ sở dữ liệu danh tiếng Tranco & Bản ghi TLS/DNS';
+        }
+
+        // Cột 3: 3 Thanh tiến trình Trụ Cột (KẾT QUẢ THẨM ĐỊNH)
+        const pTransLabel = document.getElementById('pillar-transparency-label');
+        const pTransBar = document.getElementById('pillar-transparency-bar');
+        const pLegalLabel = document.getElementById('pillar-legal-label');
+        const pLegalBar = document.getElementById('pillar-legal-bar');
+        const pSafetyLabel = document.getElementById('pillar-safety-label');
+        const pSafetyBar = document.getElementById('pillar-safety-bar');
+
+        // Trụ cột 1: Minh bạch dữ liệu
+        if (score >= 75) {
+          if (pTransLabel) { pTransLabel.textContent = 'Rất minh bạch'; pTransLabel.className = 'font-bold text-emerald-400 text-[11px]'; }
+          if (pTransBar) { pTransBar.style.width = '90%'; pTransBar.className = 'h-full bg-emerald-400 rounded-full transition-all duration-700'; }
+        } else if (score >= 45) {
+          if (pTransLabel) { pTransLabel.textContent = 'Cần làm rõ'; pTransLabel.className = 'font-bold text-amber-400 text-[11px]'; }
+          if (pTransBar) { pTransBar.style.width = '65%'; pTransBar.className = 'h-full bg-amber-400 rounded-full transition-all duration-700'; }
+        } else {
+          if (pTransLabel) { pTransLabel.textContent = 'Thiếu minh bạch'; pTransLabel.className = 'font-bold text-red-400 text-[11px]'; }
+          if (pTransBar) { pTransBar.style.width = '25%'; pTransBar.className = 'h-full bg-red-400 rounded-full transition-all duration-700'; }
+        }
+
+        // Trụ cột 2: Điều khoản pháp lý
+        if (isDangerous) {
+          if (pLegalLabel) { pLegalLabel.textContent = 'Vi phạm pháp luật'; pLegalLabel.className = 'font-bold text-red-400 text-[11px]'; }
+          if (pLegalBar) { pLegalBar.style.width = '15%'; pLegalBar.className = 'h-full bg-red-400 rounded-full transition-all duration-700'; }
+        } else if (isWarning) {
+          if (pLegalLabel) { pLegalLabel.textContent = 'Chưa rõ ràng'; pLegalLabel.className = 'font-bold text-amber-400 text-[11px]'; }
+          if (pLegalBar) { pLegalBar.style.width = '55%'; pLegalBar.className = 'h-full bg-amber-400 rounded-full transition-all duration-700'; }
+        } else {
+          if (pLegalLabel) { pLegalLabel.textContent = 'Đã phân tích / Tuân thủ'; pLegalLabel.className = 'font-bold text-sky-400 text-[11px]'; }
+          if (pLegalBar) { pLegalBar.style.width = '88%'; pLegalBar.className = 'h-full bg-sky-400 rounded-full transition-all duration-700'; }
+        }
+
+        // Trụ cột 3: Tín hiệu lừa đảo
+        if (isDangerous) {
+          if (pSafetyLabel) { pSafetyLabel.textContent = 'Rủi ro rất cao'; pSafetyLabel.className = 'font-bold text-red-400 text-[11px]'; }
+          if (pSafetyBar) { pSafetyBar.style.width = '95%'; pSafetyBar.className = 'h-full bg-red-400 rounded-full transition-all duration-700'; }
+        } else if (isWarning) {
+          if (pSafetyLabel) { pSafetyLabel.textContent = 'Rủi ro trung bình'; pSafetyLabel.className = 'font-bold text-amber-400 text-[11px]'; }
+          if (pSafetyBar) { pSafetyBar.style.width = '50%'; pSafetyBar.className = 'h-full bg-amber-400 rounded-full transition-all duration-700'; }
+        } else {
+          if (pSafetyLabel) { pSafetyLabel.textContent = 'Rủi ro thấp'; pSafetyLabel.className = 'font-bold text-emerald-400 text-[11px]'; }
+          if (pSafetyBar) { pSafetyBar.style.width = '92%'; pSafetyBar.className = 'h-full bg-emerald-400 rounded-full transition-all duration-700'; }
+        }
 
         // Nội dung tóm tắt, URL & Động cơ
         document.getElementById('summary-text').textContent = data.summary || 'Không có tóm tắt.';
-        document.getElementById('analyzed-url-display').textContent = '🔗 ' + (data.analyzed_url || '');
-        document.getElementById('engine-display').textContent = '⚡ Động cơ: ' + (data.analysis_engine || 'Động cơ Giám định Nội bộ (Verity Heuristic Engine)');
+        document.getElementById('analyzed-url-display').textContent = '🔗 URL: ' + (data.analyzed_url || '');
 
         // 1. Độ tuổi phù hợp (Age Rating)
         const age = data.age_rating || {};
